@@ -453,10 +453,15 @@ void ABL_Send(ABL_POLL_STATUS s)
   Serial_ABL.write(tx[i]);
  }
  Serial_ABL.write("\r\n");
+Serial_ABL.flush(true);
  delay(10);
  digitalWrite(ABL_RX_LOW_ENABLE_GPIO, 0);
  delay(500);
- Serial_ABL.flush();
+ // empty the rx input because of possible trash after first ABL-wakeup call
+ while (Serial_ABL.available()) 
+ {
+    char inChar = (char)Serial_ABL.read();
+  }
  // send 2x for wakeup from sleep
  digitalWrite(ABL_RX_LOW_ENABLE_GPIO,1);
  for (int i =0; i< tx.length(); i++)
