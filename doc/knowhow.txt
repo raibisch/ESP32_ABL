@@ -1,0 +1,289 @@
+Github: https://github.com/ThKls/Wallbox-Test
+
+Quelle: https://www.goingelectric.de/forum/viewtopic.php?f=34&t=38749&start=60
+
+: Startzeichen
+01 Adresse des angesprochenen Slaves (hier die Wallbox mit der Adresse 1.
+03 Befehl: Read Holding Register
+000F Start-Register (hier: 000F, Dezimal: 15)
+0005 Länge = Anzahl der zu lesenden Register ´, hier: 5
+E8 Checksumme
+
+Der Modbus Standard würde es zulassen, nur das Register 000F zu lesen (Länge 1) und nicht die 4 folgenden, 
+aber die eMH1 antwortet dann einfach nicht. Daher ist hier die 0005 die von mir angesprochene Länge.
+
+Zu Deinem Problem: Der angegebene Befehl ist richtig, allerdings sind zwei Dinge zu beachten:
+1. Die Box muss richtig angeschlossen sein.
+2. Der jeweils erste Befehl an eine "schlafende" Box wird sehr oft nicht beantwortet (Time-Out).
+
+Hardware-Anschluss:
+===================
+Ein Modbus muss auf beiden Seiten mit 120 Ohm abgeschlossen werden. 
+Zudem muss an einer Stelle (bevorzugt am Master) der elektrische "Preset" erfolgen.
+
+by JG: nicht getestet:
+Die Leitung Tx+ (Pin 6, A) mit 1kOhm nach 5V, Tx- (Pin 7, B) mit 1kOhm nach Masse. 
+
+
+Pin
+1 RS485-A (1+2 -> Twisted-pair-Adern orange-weiß / orange)
+2 RS485-B
+3 Masse
+4
+5 Masse
+6
+7 RS485-A (7+8 -> Twisted-pair-Adern braun-weiß / braun
+8 RS485-B
+
+die Bezeichnungen A/M/B beschreiben die Anschlüsse des Modbuses. A und B sind die differentiellen Signalleitungen und M ist die Masse.
+
+Die Farbcodierung beschreibt das jeweilige Twisted-Pair-Adernpaar einer Ethernet-Leitung, die u.a. zur Konfiguration und zur Verbindung zum PC über einen speziellen ABL-RS485-USB-Adapter benötigt wird.
+
+z.B. Modbus Leitung A (Control) Ethernet-Leitung Orange-Weiss -> geht auf Ethernet-Stecker RJ45 Pin1
+Modbus Leitung B (Control) Ethernet-Leitung Orange -> geht auf Ethernet-Stecker RJ45 Pin2
+Masse (Control) Ethernet-Leitung Grün-Weiss -> geht auf Ethernet-Stecker RJ45 Pin3
+
+Modbus Leitung A (Meter) Ethernet-Leitung Braun-Weiss -> geht auf Ethernet-Stecker RJ45 Pin7
+Modbus Leitung B (Meter) Ethernet-Leitung Braun -> geht auf Ethernet-Stecker RJ45 Pin8
+Masse (Meter) Ethernet-Leitung Blau-Weiss -> geht auf Ethernet-Stecker RJ45 Pin5
+
+
+Zum Einschlafen:
+Ich habe den Eindruck, im Ruhezustand ist das Interface nicht aktiviert und braucht ein bisschen Zeit um aufzuwachen. Daher muss der erste Befehl ggfls. mehrmals wiederholt werden. Nach einigen zig Sekunden ohne Aktivität schläft das Interface wieder ein.
+
+Meine Beobachtung:
+Im Ruhezustand blinkt die grüne LED alle 5 Sekunden kurz. Nach dem ersten Befehl wechselt der Zustand auf längeres Blinken alle 2-3 Sekunden.
+
+Bei mir Softwarestand der Wallbox: 4.1
+
+Das jeweils erste zurückgegeben Byte ist die Nummer des Start-Registers selber. Ich gebe also immer die Adresse des Registers und die Länge an:
+<Register in Hex-Notation> / Länge :
+<Rückgabewerte>
+Alle Erklärungen sind meine Interpretation.
+
+0x01/3:
+0x01 <Byte 1> <Byte 2> <Byte 3>
+3 Byte Kennung der Box. Bei mir beginnt es mit 0x41 (= ASCII A). Das kann ein 'A' oder auch die Softwareversion (bei mir 4.1) sein.
+
+0x03/1:
+0x03 <Byte>
+unbekannt
+
+0x04/1:
+0x04 <Byte Status>
+Lade-Status (A1, B1, B2, C2)
+
+0x06/3:
+0x06 <Byte 1> <Byte 2> <Byte 3>
+unbekannt
+
+0x09/3:
+0x09 <Byte 1> <Byte 2> <Byte 3>
+unbekannt, Byte 2 hat in den unteren 2 Bit den Status der grünen und blauen LED
+
+0x0D/3:
+0x0D <Byte 1> <Byte 2> <Byte 3>
+unbekannt
+
+0x0F/5:
+0x0F <Byte 1> <Word Strombegrenzung Box> <Strombegrenzung Einstellung> <Strombegrenzung Preset (Register 0x14)> <Strombegrenzung effektiv>
+Diese Werte sind als PWM-Werte gem. CP-Pin nach IEC 62169 angegeben. Der Wert ist die Pulsweite in % mal 10. Also 0x010B = 267 Dezimal = 26,7 * 0,6A = 16 Ampere Stromstärke.
+
+0x15/3:
+0x15 <Byte Status> <Word CP+> <Word CP-> <Word PP> <Word Temperatur?>
+Status ist der Status analog zu Register 0x4. CP + ist der Wert der positiven Spannung am CP-Pin, CP- der negativen Spannung am CP-Pin. Der Wert muss mit 0,00425 Volt multipliziert werden (gleich der vierfachen Auflösung des Vorgänger Controllers EVCC1). PP entspricht dem Widerstandswert des PP-Pins (Strombelastbarkeit des Kabels) bei Varianten mit Steckdose. Es könnte der gemessene Wert in Ohm + 2.200 sein. Temperatur könnte etwas mit der gemessenen Temperatur in der Box zu tun haben. Zumindest scheint er von der Außentemperatur abhängig zu sein.
+
+0x2E/5:
+0x2E <Byte Status> <Wort Strombegrenzung spezial> 3 mal <Wort Strom Phasen L3, L2, L1>
+Der Status ist analog zu Register 4. Strombegrenzung spezial ist die effektiv eingestellte Strombegrenzung analog zu Register 0x0F. Die obersten 4 Bit scheinen einen Status anzuzeigen. Strom Phasen ist der gemessene Strom der 3 Phasen in 100mA-Schritten.
+
+0x33/3:
+0x33 <Byte X> <Byte Status> 3 mal <Byte Strom Phasen L3, L2, L1>
+X scheint wieder ein unbekannter Statuswert zu sein. Status ist analog zu Register 0x04. Strom ist der Strom der 3 Phasen, diesmal in Ampere.
+
+In zwei Register kann man schreiben:
+0x05/1: <Byte X> <Byte Y>
+Das scheint ein Steuerport zu sein. Setzt man X und Y auf 0x5A (= ASCII 'Z') wird die Wallbox zurückgesetzt und durchläuft einen Reset inkl. Blinkcode der LEDs gem. Software-Version
+
+0x14/1: <Wort PWM>
+Hier spielt die Musik! Durch diesen Wert gibt man die Pulsweite des PWM-Signals auf dem CP-Pin und damit die Stromstärke an (in 0,1%, siehe Register 0x0F). Von 100 (= 6 Ampere) bis 267 (= 16 Ampere, mehr geht bei mir nicht), können die Werte in 1 Ampere-Schritten angegeben werden.
+Sonderfälle: 0 bis 49: Fehler; 50 bis 79: PWM 5% (Abbruch des Ladens bei meinem VW eUP); 80 bis 99: wird auf 100 gesetzt; 1000 unterbricht das Laden bis ein neuer Wert geschrieben wird. Bei meinem VW eUp kann das Laden auch nach längerer Zeit wieder aufgenommen werden.
+
+
+
+
+Quelle: https://www.goingelectric.de/forum/viewtopic.php?p=1550459#
+
+LRC-Berechnung
+============
+Bei allen Befehlen muss das abschliessende LRC Byte hinzugefÃŒgt werden.
+Ein Online Rechner ist hier.
+
+Dazu muss man dort die Option Hex auswählen und dann den Befehl ohne Doppelpunkt z.B. aus der Abfrage der Firmware, hier also 010300010002 einfügen.
+Dann erhält man unter Calculation result (Hex) den gewuenschten Wert. Diese haengt man an den Befehl.
+Hier also :010300010002+F9 also :010300010002F9
+
+******************************************************
+Abfrage Firmware (0x0001)
+:010300010002
+>0103 04 014150BE A8
+******************************************************
+Ladestatus (0x0004)
+:01 03 00040001
+            Status
+>0103 02 04   A1     55
+******************************************************
+Ladepunkt resetten (0x0005)
+:01 1000050001025A5A
+
+Ladepunkt sperren (0x0005)
+:01100005000102E0E0
+>0110 0005 0001 E9
+
+Ladepunkt entsperren (0x0005)
+:01100005000102A1A1
+>0110 00 05 0001 E9
+******************************************************
+Status (0x002E)
+:0103002E0005
+
+         Reg0 Reg1 Reg2 Reg3 Reg4
+>0103 0A 2EA1 1064 03E8 03E8 03E8 EE  (A1 warte auf Fahrzeug)
+>0103 0A 2EB2 D064 03E8 03E8 03E8 1D  (B2 connected = true; chargerelease = true; charging = false;) nicht laden)
+>0103 0A 2EC3 D064 03E8 03E8 03E8 0C  (C3 connected = true; chargerelease = true; charging = true;) laden
+>0103 0A 2EE0 1064 03E8 03E8 03E8 AF  (E0 outletlocked = true; ) gesperrt
+>0103 0A 2EC2 9100 0001 0001 0096 D9
+:0103002E0005
+******************************************************
+Strom (0x000F)
+
+:0103000F0005
+>0103 0A 0F3F 010B 010B 00E9 00E9 BA
+>0103 0A 0F3F 010B 010B 00E9 0000 A3
+******************************************************
+Max. Ladeleistung setzen (0x0014)
+(6A)
+:011000140001020064
+(7A)
+:011000140001020075
+(8A)
+:011000140001020086
+(9A)
+:011000140001020096
+(10A)
+:0110001400010200A7
+(11A)
+:0110001400010200B8
+(12A)
+:0110001400010200C8
+(13A)
+:0110001400010200D9
+(14A)
+:0110001400010200EA
+(15A)
+:0110001400010200FA
+(16A)
+:01100014000102010B
+
+(Laden unterbrechen)
+:0110001400010203E8
+
+******************************************************
+Spannung (0x0015)
+:010300150005
+>0103 0A 15A1 0ADA 0000 0000 0ACB 83
+>0103 0A 15A0 0ADF 0000 0000 0ACD 7D
+******************************************************
+DeviceID abfragen (0x0050)
+:010300500008
+
+------------ eigene Recherche ------------------------
+by JG
+Register 0x002E Read current (full)
+
+   r/w Reg leng, LRC
+   r  46d   5
+:01 03 002E 0005 C9   
+
+Send: Test-String
+:0103002E0005C9
+
+Antwort: (nichts angeschlossen)
+>01030A2EA1108503E803E803E8CD
+
+
+                      0=not connected
+                      0=not reduced
+                      0=EN2 open
+                      1=EN1 closes 
+      Cnt Reg    State   0001       Imax         Ip1   Ip2  Ip3   lRC
+      10                         133dx0.06
+                                 = 8A
+>01 03 0A 2E      A1     10        85          03E8 03E8 03E8 CD
+cnt:               0      1         2          3 4  5 6  7 8 
+>01 03 0A 2E      A1     10        64          03E8 03E8 03E8 EE
+                                 100dx0.06
+                                 =  6A
+------------------------------
+Get PWM (nicht in ABL Doku)
+Register 0x00F0
+  r/w Reg  leng, LRC
+   r  16d   5
+:01 03 000F 0005 E8
+
+Send; Test String
+:0103000F0005E8
+
+Antwort: (nichts angeschlossen)
+>01030A0F3F010B00850085008509
+      
+      Cnt Reg
+      10             166*0,06  ...   ...
+                     =8A
+>01 03 0A 0F   3F 010B 0085    0085  0085 09
+>01 03 0A 0F   3F 010B 0064    0085  0064 4B
+                     100*0.05
+                     =10A
+------------------------------------------------------------------------------------------------------                    
+Set I-Soll:
+=======
+6A:
+:01100014000102006474
+
+7A:
+:01100014000102007563
+
+8A:
+:01100014000102008553
+
+9A:
+:01100014000102009642
+
+10A:
+:0110001400010200A731
+
+11A:                                                                  
+Ergänzungen. Diese setzten ein bisschen Verständnis des Modbus-Protokolls voraus aber das hat fredvomjupiter42 schon gut beschrieben.
+Ich benutze als Register-Adressen die Adressen, wie im Modbus-Protokoll angegeben (1 bis x und nicht 40.001 bis x).
+Alles ohne Gewähr Auf eigene Gefahr!
+Die Daten lassen sich nur auslesen, wenn neben dem richtigen Start-Register auch die richtige Länge angegeben wird.
+Ansonsten ist es mir nicht gelungen Daten zu lesen
+:0110001400010200B721
+
+12A:
+:0110001400010200C810
+
+13A:
+0110001400010200D9FF
+
+14A:
+:0110001400010200E9EF
+
+15A:
+:0110001400010200FADE
+
+16A:
+:01100014000102010BCC
+
+
+

@@ -1,0 +1,28 @@
+<!DOCTYPE HTML>
+<html>
+
+<script type="text/javascript">
+   function myConfirm ()
+     {
+        return confirm('Neustart ?')
+     }
+</script>
+
+<head>
+   <title>Config</title>
+   <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport">
+   <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+<table>
+   <form action="config.html" method="POST">
+     <p>CONFIG-DATA</p>
+     <textarea autocorrect="off" name="saveconfig">%CONFIG%</textarea>
+     <p><button class="buttonblue" type="submit">Setup-save</button></p>
+   </form>
+   
+   <p><a class="buttonlink" href="config.txt" download>Setup-download</a></p>
+   <a class="buttonlink" href="index.html">back</a>
+</table>
+</body>
+</html>

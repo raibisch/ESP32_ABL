@@ -1,0 +1,126 @@
+<!DOCTYPE HTML>
+<html>
+
+    <head>
+        <title>%DEVICEID%</title>
+        <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport">
+        <link rel="stylesheet" type="text/css" href="style.css">
+        <meta charset="UTF-8">
+        <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+        <link rel="icon" sizes="192x192" href="android-chrome-192x192.png">
+        <link rel="icon" sizes="384x384" href="android-chrome-384x384.png">
+        <link rel="icon" href="favicon.ico">
+        <link rel="manifest" href="manifest.json">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="theme-color" content="#ffffff">
+    </head>
+
+    <body >
+         <h2>%DEVICEID%</h2>
+         <table>
+            <tr>
+              <th>A</th>
+              <th>kW</th>
+              <th>kW/h</th>
+              <th>STATUS</th>
+            </tr>
+            <tr>
+              <td class="mywidth"id="ABL_A_SOLL">--</td>
+              <td id="ABL_KW_IST">--</td>
+              <td id="ABL_KWH_IST">--</td>
+              <td class="mynoblink" id="ABL_STATUS">--</td>
+            </tr>
+         </table>
+         </p>
+         <p><form action="" method="POST" >
+          <input class="buttonred" name="ihigh" type="submit" value="%I-HIGH%">
+         </form></p>
+         <p><form action="" method="POST" >
+          <input class="buttongreen" name="ilow" type="submit" value="%I-LOW%">
+         </form></p>
+         <p><form action="" method="POST" >
+          <input class="buttonyellow" name="pause" type="submit" value="PAUSE" id="BUTTON_PAUSE">
+         </form></p>
+
+         <a class="buttonlink" href="setup.html">Setup</a>
+         </p>
+        
+         <script type="text/javascript">
+            //var t = new Date();
+            function reqListener ()
+            {
+              var myResponse = this.responseText;
+              //myResponse = myResponse.toUpperCase();
+              //console.log(this.responseText);
+              var myArray = myResponse.split(",");
+              
+              //console.log(myArray);
+        
+              document.getElementById('ABL_A_SOLL').innerHTML  = myArray[0];
+              document.getElementById('ABL_KW_IST').innerHTML  = myArray[1];
+              document.getElementById('ABL_STATUS').innerHTML  = myArray[2];
+              document.getElementById('ABL_KWH_IST').innerHTML = myArray[3];
+
+               // Beispiel : https://code-boxx.com/change-override-css-with-javascript
+              if (myArray[2] == "A1") 
+              {
+                document.getElementById('ABL_STATUS').style.background = 'green';
+                document.getElementById('ABL_STATUS').className = "mynoblink";
+                //document.getElementById('ABL_STATUS').className = "myblink"; // for test
+                document.getElementById('ABL_A_SOLL').style.background = 'green';
+                document.getElementById('ABL_KW_IST').style.background = 'green';
+                document.getElementById('ABL_KWH_IST').style.background = 'green';
+                document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
+              }
+              else if ((myArray[2] == "B1") || (myArray[2] == "B2"))
+              {
+                document.getElementById('ABL_STATUS').style.background = 'yellow';
+                document.getElementById('ABL_STATUS').className = "myblink"; 
+                document.getElementById('ABL_A_SOLL').style.background = 'yellow';
+                document.getElementById('ABL_KW_IST').style.background = 'yellow';
+                document.getElementById('ABL_KWH_IST').style.background = 'yellow';
+                document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
+                
+              }
+              else if (myArray[2] == "C2")
+              {
+                document.getElementById('ABL_STATUS').style.background = 'blue';
+                document.getElementById('ABL_STATUS').className = "myblink";
+                document.getElementById('ABL_A_SOLL').style.background = 'blue';
+                document.getElementById('ABL_KW_IST').style.background = 'blue';
+                document.getElementById('ABL_KWH_IST').style.background = 'blue';
+                document.getElementById("BUTTON_PAUSE").style.visibility= 'visible';
+              }
+              else if (myArray[2] == "noCom")
+              {
+                document.getElementById('ABL_STATUS').style.background = 'red';
+                document.getElementById('ABL_STATUS').className = "myblink";
+                document.getElementById('ABL_A_SOLL').style.background = 'red';
+                document.getElementById('ABL_KW_IST').style.background = 'red';
+                document.getElementById('ABL_KWH_IST').style.background = 'red';
+                document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
+              }
+              else
+              {
+                document.getElementById('ABL_STATUS').style.background = 'black';
+                document.getElementById('ABL_STATUS').className = "myblink";
+                document.getElementById('ABL_A_SOLL').style.background = 'black';
+                document.getElementById('ABL_KW_IST').style.background = 'black';
+                document.getElementById('ABL_KWH_IST').style.background = 'black';
+                document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
+              }
+            }
+            var oReq = new XMLHttpRequest();
+            oReq.addEventListener("load", reqListener);
+            setInterval(function()
+            {
+              //var dateNow = new Date();  // current time
+              oReq.open("GET", "/fetch");
+              oReq.send();
+            }, 2000);
+
+
+          </script>
+    </body>
+
+</html>

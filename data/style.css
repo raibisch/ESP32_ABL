@@ -1,0 +1,163 @@
+html {
+  font-family: monospace;
+  display: inline-block;
+  margin: 0px auto;
+  text-align: center;
+  font-size:1rem;
+  min-width:340px;
+}
+h1{color: blue;padding: 15px;}
+h3{color:blue;padding:10px;}
+body{ font-weight: bold;}
+
+.button2 {
+  background-color: #f44336;
+}
+
+
+.status_blue
+{
+  background-color: blue;
+  color: white;
+}
+.status_green
+{
+  background-color: green;
+  color: white;
+}
+
+.status_red
+{
+  background-color: #008CBA;
+  color: white;
+}
+
+.buttongreen {
+  background-color: hsl(127, 100%, 29%);
+  display: inline-block;
+  width: 300px;
+  padding: 15px 20px;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 2rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+
+.buttonred {
+  background-color: #f10b0b;
+  display: inline-block;
+  width: 300px;
+  padding: 15px 20px;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 2rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+
+.buttonblue {
+  background-color: #008CBA;
+  display: inline-block;
+  width: 300px;
+  padding: 15px 20px;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+
+.buttonyellow {
+  background-color: #f1d104;
+  display: inline-block;
+  width: 300px;
+  padding: 15px 20px;
+  border: none;
+  border-radius: 10px;
+  color: blue;
+  font-size: 1.6rem;
+  text-align: center;
+  cursor: pointer;
+  visibility: hidden;
+}
+
+
+.buttonlink {
+  background-color: #008CBA;
+  display: inline-block;
+  width: 270px;
+  padding: 15px 20px;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 1.5rem;
+  text-align: center;
+  cursor: pointer;
+}
+
+.mywidth {
+  width: 20%;
+}
+
+.container {
+  display: inline-block;
+  width: 360px;
+  border: 3px solid red;
+  border-radius: 10px;
+  padding: 15px;  
+  text-align: center;
+}
+
+a:link {
+    text-decoration: none;
+    cursor: pointer;
+}
+
+
+input{  
+       margin: 5px;
+       width: 120px;
+       border-radius: 5px;
+       padding: 5px;}
+
+table{ margin-left: auto;
+  margin-right: auto;
+  width: 300px;}
+
+th, td {
+  font-size: 1rem;
+  border-radius: 0.5rem;
+  padding: 0.5rem 0rem;
+  border: 3px solid gray;
+}
+
+td{
+  background-color: black;
+  color: white;
+}
+
+textarea{
+  width:30em;
+  height:25em;}
+
+.myblink {
+  width: 20%;
+  animation: blinkingBackground 2s infinite;
+}
+.mynoblink {
+  width: 20%;
+  animation: none;
+}
+
+@keyframes blinkingBackground {
+    50% {
+        opacity: 0;
+    }
+}

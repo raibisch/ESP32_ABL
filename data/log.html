@@ -1,0 +1,71 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+   <title>Event-Log:</title>
+   <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport">
+   <link rel="stylesheet" type="text/css" href="style.css">
+   <meta charset="UTF-8">
+</head>
+<body>
+   <!-- Formular zum Editieren und Speichern der Einstellungsdaten -->
+   <!-- siehe:   https://ullisroboterseite.de/projekte-haus-wetter-config.html   -->
+  <form action="log.html" method="POST">
+     <p>Event-Log:</p>
+     <textarea autocorrect="off" id="logtext"></textarea>
+  </form>
+  </p>
+  <button class="buttonlink" name="clear" onclick="clearText()">delete log</button>
+  </p>
+  <button class="buttonlink" id="add"  onclick="toggleScroll()">scroll on/off </button>
+  </p>
+  <a class="buttonlink" href="index.html">back</a>
+
+<script>
+  var stopscroll=false;
+  
+  function clearText()
+  {
+    document.getElementById("logtext").value="";
+ 
+  }
+  function toggleScroll()
+  {
+     stopscroll=!stopscroll;
+  }
+ 
+  function addText(text)
+  { 
+    text = text.replace("<LF>","\n");
+    document.getElementById("logtext").value += (text);
+    if (stopscroll==false)
+    {
+      document.getElementById("logtext").scrollTop =  document.getElementById("logtext").scrollHeight;
+    }
+  }
+ 
+  if (!!window.EventSource) 
+  {
+   var source = new EventSource('/logevents');
+ 
+   source.addEventListener('open', function(e) {
+     console.log("Events Connected");
+   }, false);
+ 
+   source.addEventListener('error', function(e) {
+     if (e.target.readyState != EventSource.OPEN) {
+       console.log("Events Disconnected");
+     }
+   }, false);
+ 
+   source.addEventListener('message', function(e) {
+     console.log("message", e.data);
+   }, false);
+ 
+   source.addEventListener('logprint', function(e) {
+     //console.log("logprint", e.data);
+     addText(e.data);
+   }, false);
+  }
+ </script>
+</body>
+</html>

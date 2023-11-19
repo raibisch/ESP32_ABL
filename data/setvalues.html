@@ -1,0 +1,43 @@
+
+     <!DOCTYPE html>
+     <html>
+      <script>
+        function onlyNumberKey(evt) 
+        {
+          
+          // Only ASCII character in that range allowed
+          var ASCIICode = (evt.which) ? evt.which : evt.keyCode
+          if (ASCIICode > 31 && (ASCIICode < 46 || ASCIICode > 57))
+            return false;
+          return true;
+        }
+  
+        function detailssubmit() 
+        {
+          alert("Your details were Submitted");
+        }
+      </script>
+
+
+<head>
+   <title>History-Values</title>
+   <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport">
+   <link rel="stylesheet" type="text/css" href="style.css">
+   <meta charset="UTF-8">
+</head>
+<body>
+        
+  <div class="container">
+        <p>Set Hist.-Values (Sum)</p>
+        <form action="/setvalues.html" method="post">
+          <tr>
+            <th>  <label class="inputtext" for="kwhsum">kW/h</label></th>
+            <th> <input type="number" step="0.001" value="%KWHSUM%" onkeypress="onlyNumberKey(event)"id="kwhsum" name="kwh"></th>
+            <th> <input  type="submit" formmethod="post" value="save"></th>
+          </tr>
+        </form> 
+        <a class="buttonlink" href="/setup.html">back</a>
+  </div>
+</body>
+</html>
+     

@@ -1,0 +1,41 @@
+<!DOCTYPE HTML>
+<html lang="de">
+<head>
+   <title>Update</title>
+   <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport">
+   <link rel="stylesheet" type="text/css" href="style.css">
+   <meta charset="UTF-8">
+</head>
+<body>
+  <h2>Software-Update</h2>
+  <input class='container' type="file" onchange='upload(this.files[0])'><br>
+  <input class='button3' type='submit' value='Update'><br>
+<a class="button3" href="index.html">zur&uuml;ck</a>
+<script>
+  function upload(file) 
+  {
+    let xhr = new XMLHttpRequest();
+  
+    // listen for upload progress
+    xhr.upload.onprogress = function(event) 
+    {
+      let percent = Math.round(100 * event.loaded / event.total);
+      console.log(`File is ${percent} uploaded.`);
+    };
+  
+    // handle error
+    xhr.upload.onerror = function() {
+      console.log(`Error during the upload: ${xhr.status}.`);
+    };
+  
+    // upload completed successfully
+    xhr.onload = function() {
+      console.log('Upload completed successfully.');
+    };
+  
+    xhr.open('POST', '/ota_update');
+    xhr.send(file);
+  }
+  </script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+
+;copy or rename this file to config.txt 
+;edit WIFI credentials
+
+varDEVICE_s_Name=ABL-Wallbox;
+
+varWIFI_s_Mode=STA;
+varWIFI_s_Password=mypassword;
+varWIFI_s_SSID=myssid;
+
+varABL_i_U_netz = 230;   
+varABL_i_A_soll_low = 6;
+varABL_i_A_soll_high = 16;
+varABL_i_Scantime_ms = 30000;
