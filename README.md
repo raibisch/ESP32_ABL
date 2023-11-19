@@ -122,3 +122,6 @@ https://github.com/evcc-io/evcc/discussions/2801
 #### PlatformIO and Arduino-IDE
 
 Projekt was build and testet with PlatformIO.
+
+Take care to upload the 'data' folder to the SPIFFS filesystem 
+see: https://randomnerdtutorials.com/esp32-vs-code-platformio-spiffs/
