@@ -7,6 +7,7 @@
 Monitor and control your ABL-Wallbox with an WEB-Application and integrate it in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) with less than 10€. 
 
 The user interface was designed very simply to enable switching between two charging currents (possible application: reduced charging current for operation with a PV system)
+
 With the WEB-API the state and consumption values of the Wallbox could be monitored and charge-current could be set from external applications like homeautomation software.
 
 Additional functions (Setup) in Web-Interface
@@ -25,6 +26,7 @@ Additional functions (Setup) in Web-Interface
 
 Receive:
 `8.00,0.00,A1,0.00,103980`
+
 decoded:
 `<Imax [A]>,<aktual Power [kW]>,<Status>,<aktual Work [kW/h]>,<Sum Work [kW/h]>`
 
