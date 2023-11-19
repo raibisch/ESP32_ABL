@@ -4,7 +4,7 @@
 
 ![Android-App](/pict/Screenshot_menu_android.png)
 
-Monitor and control your ABL-Wallbox with an WEB-Application and integrate it in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) with less than 10€. 
+Monitor and control your ABL-Wallbox with an WEB-Application and integrate it in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) for less than 10€. 
 
 The user interface was designed very simply to enable switching between two charging currents (possible application: reduced charging current for operation with a PV system)
 
