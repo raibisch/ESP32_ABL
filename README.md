@@ -1,6 +1,6 @@
 # ABL-Wallbox WebControl
 
-[![License](https://img.shields.io/badge/license-EUPL1.2-green)](license/LICENSE.md)
+[![License](https://img.shields.io/badge/license-EUPL1.2-green)](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12)
 
 ![Android-App](/pict/Screenshot_menu_android.png)
 
