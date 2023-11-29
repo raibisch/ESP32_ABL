@@ -3,7 +3,7 @@ html {
   display: inline-block;
   margin: 0px auto;
   text-align: center;
-  font-size:1rem;
+  font-size:0.8rem;
   min-width:340px;
 }
 h1{color: blue;padding: 15px;}
@@ -156,8 +156,70 @@ textarea{
   animation: none;
 }
 
+
+.outer{
+  display: inline-block;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  position: relative;
+  background-color: green;
+  margin: 10px;
+  cursor:pointer;
+  animation: blinkingBackground 2s infinite;
+}
+
+
+.outer_black{
+  display: inline-block;
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  position: relative;
+  background-color: black;
+  margin: 10px;
+  cursor:pointer;
+  animation: blinkingBackground 2s infinite;
+}
+
+
+.inner {
+  position: absolute;
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+  background-color: #ffffff;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  transition: all 0.1s ease-out;
+
+}
+
+
+.ringtext_wert {
+  font-size: 2rem;
+  position: relative;
+  top: 30%;
+  text-align: center;
+}
+
+
+.ringtext_einheit {
+  position: relative;
+  top: 35%;
+  text-align: center;
+}
+
+
+.outer:hover .inner {
+  width: 80%;
+  height: 80%;
+
+}
+
 @keyframes blinkingBackground {
     50% {
-        opacity: 0;
+        opacity: 0.4;
     }
 }

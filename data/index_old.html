@@ -16,24 +16,18 @@
     </head>
 
     <body >
-       
-      <h2>%DEVICEID%</h2>
-      <div class="outer" id="RING_ID">
-       <div class="inner"></div>
-       <div id="ABL_KWH_ISTRING"class="ringtext_wert">0.00</div>
-       <div class="ringtext_einheit">[kW/h]</div>
-     </div>
+         <h2>%DEVICEID%</h2>
          <table>
             <tr>
               <th>A</th>
               <th>kW</th>
-           
+              <th>kW/h</th>
               <th>STATUS</th>
             </tr>
             <tr>
-              <td class="mywidth" id="ABL_A_SOLL">--</td>
+              <td class="mywidth"id="ABL_A_SOLL">--</td>
               <td id="ABL_KW_IST">--</td>
-          
+              <td id="ABL_KWH_IST">--</td>
               <td class="mynoblink" id="ABL_STATUS">--</td>
             </tr>
          </table>
@@ -65,8 +59,8 @@
               document.getElementById('ABL_A_SOLL').innerHTML  = myArray[0];
               document.getElementById('ABL_KW_IST').innerHTML  = myArray[1];
               document.getElementById('ABL_STATUS').innerHTML  = myArray[2];
-              document.getElementById('ABL_KWH_ISTRING').innerHTML = myArray[3];
-              
+              document.getElementById('ABL_KWH_IST').innerHTML = myArray[3];
+
                // Beispiel : https://code-boxx.com/change-override-css-with-javascript
               if (myArray[2] == "A1") 
               {
@@ -75,7 +69,7 @@
                 //document.getElementById('ABL_STATUS').className = "myblink"; // for test
                 document.getElementById('ABL_A_SOLL').style.background = 'green';
                 document.getElementById('ABL_KW_IST').style.background = 'green';
-                document.getElementById('RING_ID').style.background = 'green';
+                document.getElementById('ABL_KWH_IST').style.background = 'green';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
               else if ((myArray[2] == "B1") || (myArray[2] == "B2"))
@@ -84,7 +78,7 @@
                 document.getElementById('ABL_STATUS').className = "myblink"; 
                 document.getElementById('ABL_A_SOLL').style.background = 'yellow';
                 document.getElementById('ABL_KW_IST').style.background = 'yellow';
-                document.getElementById('RING_ID').style.background = 'yellow';
+                document.getElementById('ABL_KWH_IST').style.background = 'yellow';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
                 
               }
@@ -94,7 +88,7 @@
                 document.getElementById('ABL_STATUS').className = "myblink";
                 document.getElementById('ABL_A_SOLL').style.background = 'blue';
                 document.getElementById('ABL_KW_IST').style.background = 'blue';
-                document.getElementById('RING_ID').style.background = 'blue';
+                document.getElementById('ABL_KWH_IST').style.background = 'blue';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'visible';
               }
               else if (myArray[2] == "noCom")
@@ -103,7 +97,7 @@
                 document.getElementById('ABL_STATUS').className = "myblink";
                 document.getElementById('ABL_A_SOLL').style.background = 'red';
                 document.getElementById('ABL_KW_IST').style.background = 'red';
-                document.getElementById('RING_ID').style.background = 'red';
+                document.getElementById('ABL_KWH_IST').style.background = 'red';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
               else
@@ -112,9 +106,7 @@
                 document.getElementById('ABL_STATUS').className = "myblink";
                 document.getElementById('ABL_A_SOLL').style.background = 'black';
                 document.getElementById('ABL_KW_IST').style.background = 'black';
-                //document.getElementById('ABL_KWH_IST').style.background = 'black';
-                document.getElementById('RING_ID').style.background = 'black';
-                //document.getElementByID('RING_ID').className = 'outer_black';
+                document.getElementById('ABL_KWH_IST').style.background = 'black';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
             }
