@@ -34,6 +34,7 @@ decoded:
 `http:<your-ip>/fetch?imax=xx` (xx= 6,8,10,12,14,16)
 
 #### Domoticz Integration
+
 ...see above 'WEB-API' for other external integration (e.g. other homeautomation software)
 
 ![Domoticz](/pict/domoticz.png)
@@ -91,7 +92,7 @@ This example is realised with an 'ESP32-S2 mini' board and an 'MAX485 TTL to RS4
 #### Software
 
 my shared investigations and notes:
-https://github/raibisch/doc/knowhow.txt
+[my-doc](/doc/knowhow.txt)
 
 ...others sources
 https://github.com/ThKls/Wallbox-Test
