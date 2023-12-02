@@ -6,13 +6,14 @@
 
 Monitor and control your ABL-Wallbox with an WEB-Application and integrate it in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) for less than 10€. 
 
-The user interface was designed very simply to enable switching between two charging currents (possible application: reduced charging current for operation with a PV system)
+The user interface was designed very simply to enable switching between two charging currents (possible application: reduced charging current for operation with a PV system).
+The two values could be individual defined in the 'config-data' page (for use without external setting via WEB-API, or as "HIGH/LOW Quit-Set" values)
 
-With the WEB-API the state and consumption values of the Wallbox could be monitored and charge-current could be set from external applications like homeautomation software.
+With the WEB-API the state and consumption values of the Wallbox could be monitored and charge-current could be set from 6A up to 16A in external applications like homeautomation software.
 
 Additional functions (Setup) in Web-Interface
 
-* CONFIG-DATA: set and store parameter and WiFi-credentials
+* CONFIG-DATA: set and store parameter and WiFi-credentials and the the "Quick-Set charge-current"
 * EVENT-LOG: Serial debug logging
 * OTA-UPDATE: Software update (Over the air update)
 * HISTORY: Set and Store total kW/h sum in internal FLASH
@@ -126,3 +127,6 @@ Projekt was build and testet with PlatformIO.
 
 Take care to upload the 'data' folder to the SPIFFS filesystem 
 see: https://randomnerdtutorials.com/esp32-vs-code-platformio-spiffs/
+
+## todo
+- Test in 'real live' with plugged and charging car (until now ony tested with wallbox in lab without car pluged in !!)
