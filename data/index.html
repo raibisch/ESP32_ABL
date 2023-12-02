@@ -14,27 +14,24 @@
         <meta name="mobile-web-app-capable" content="yes">
         <meta name="theme-color" content="#ffffff">
     </head>
-
     <body >
-       
       <h2>%DEVICEID%</h2>
-      <div class="outer" id="RING_ID">
-       <div class="inner"></div>
-       <div id="ABL_KWH_ISTRING"class="ringtext_wert">0.00</div>
-       <div class="ringtext_einheit">[kW/h]</div>
+      <div class="outerring" id="RING_ID">
+       <div class="innerring"></div>
+       <div id="ABL_KWH_IST"class="ringtext_value">---</div>
+       <div class="ringtext_unit">[kW/h]</div>
+       <div class="ringtext_status" id="ABL_STATUS">--</div>
      </div>
          <table>
             <tr>
-              <th>A</th>
-              <th>kW</th>
-           
-              <th>STATUS</th>
-            </tr>
-            <tr>
               <td class="mywidth" id="ABL_A_SOLL">--</td>
               <td id="ABL_KW_IST">--</td>
-          
-              <td class="mynoblink" id="ABL_STATUS">--</td>
+              <td class="mywidth" id="ABL_KWH_SUM">--</td>
+            </tr>
+            <tr>
+              <th>I-max</th>
+              <th>kW-charge</th>
+              <th>kW/h-sum</th>
             </tr>
          </table>
          </p>
@@ -59,62 +56,47 @@
               //myResponse = myResponse.toUpperCase();
               //console.log(this.responseText);
               var myArray = myResponse.split(",");
-              
+            
               //console.log(myArray);
-        
-              document.getElementById('ABL_A_SOLL').innerHTML  = myArray[0];
-              document.getElementById('ABL_KW_IST').innerHTML  = myArray[1];
-              document.getElementById('ABL_STATUS').innerHTML  = myArray[2];
-              document.getElementById('ABL_KWH_ISTRING').innerHTML = myArray[3];
-              
+              if (myArray[1] != null)
+              {
+               document.getElementById('ABL_A_SOLL').innerHTML  = myArray[0];
+               document.getElementById('ABL_KW_IST').innerHTML  = myArray[1];
+               document.getElementById('ABL_STATUS').innerHTML  = myArray[2];
+               document.getElementById('ABL_KWH_IST').innerHTML = myArray[3];
+               document.getElementById('ABL_KWH_SUM').innerHTML = (myArray[4]/1000);
+              }
                // Beispiel : https://code-boxx.com/change-override-css-with-javascript
               if (myArray[2] == "A1") 
               {
-                document.getElementById('ABL_STATUS').style.background = 'green';
-                document.getElementById('ABL_STATUS').className = "mynoblink";
-                //document.getElementById('ABL_STATUS').className = "myblink"; // for test
-                document.getElementById('ABL_A_SOLL').style.background = 'green';
-                document.getElementById('ABL_KW_IST').style.background = 'green';
+                document.getElementById('ABL_STATUS').style.color = 'green';
+                document.getElementById('RING_ID').className = "outerring_blink";
                 document.getElementById('RING_ID').style.background = 'green';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
               else if ((myArray[2] == "B1") || (myArray[2] == "B2"))
               {
-                document.getElementById('ABL_STATUS').style.background = 'yellow';
-                document.getElementById('ABL_STATUS').className = "myblink"; 
-                document.getElementById('ABL_A_SOLL').style.background = 'yellow';
-                document.getElementById('ABL_KW_IST').style.background = 'yellow';
                 document.getElementById('RING_ID').style.background = 'yellow';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
                 
               }
               else if (myArray[2] == "C2")
               {
-                document.getElementById('ABL_STATUS').style.background = 'blue';
-                document.getElementById('ABL_STATUS').className = "myblink";
-                document.getElementById('ABL_A_SOLL').style.background = 'blue';
-                document.getElementById('ABL_KW_IST').style.background = 'blue';
-                document.getElementById('RING_ID').style.background = 'blue';
+                document.getElementById('ABL_STATUS').style.color = 'aqua';
+                document.getElementById('RING_ID').className = "outerring_blink";
+                document.getElementById('RING_ID').style.background = 'aqua';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'visible';
               }
               else if (myArray[2] == "noCom")
               {
-                document.getElementById('ABL_STATUS').style.background = 'red';
-                document.getElementById('ABL_STATUS').className = "myblink";
-                document.getElementById('ABL_A_SOLL').style.background = 'red';
-                document.getElementById('ABL_KW_IST').style.background = 'red';
+                document.getElementById('ABL_STATUS').style.color = 'red';
                 document.getElementById('RING_ID').style.background = 'red';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
               else
               {
-                document.getElementById('ABL_STATUS').style.background = 'black';
-                document.getElementById('ABL_STATUS').className = "myblink";
-                document.getElementById('ABL_A_SOLL').style.background = 'black';
-                document.getElementById('ABL_KW_IST').style.background = 'black';
-                //document.getElementById('ABL_KWH_IST').style.background = 'black';
+                document.getElementById('ABL_STATUS').style.color = 'black';
                 document.getElementById('RING_ID').style.background = 'black';
-                //document.getElementByID('RING_ID').className = 'outer_black';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
             }

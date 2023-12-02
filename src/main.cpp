@@ -1018,7 +1018,7 @@ void loop()
         //if (ABL_rx_status.startsWith("A")) // for test without EV
         if ((ABL_rx_status.startsWith("C")) && (ABL_rx_kW > 0))
         {
-         //ABL_rx_kWh = ABL_rx_kWh + ( 10.0    /(3600/(ABL_pollPeriod/1000))); // for test without EV
+         //ABL_rx_kWh = ABL_rx_kWh + ( 10.0    /(3600/(varStore.varABL_i_Scantime_ms/1000))); // for test without EV
         
         ABL_rx_kWh = ABL_rx_kWh + (ABL_rx_kW/(3600/(varStore.varABL_i_Scantime_ms/1000)));
         debug_print("kWh: ");
@@ -1028,6 +1028,7 @@ void loop()
         if (ABL_rx_status.startsWith("no"))
         {
           ABL_rx_kW = 0;
+          ABL_PollTime_old = now + 10000;
         }
 
         setLED(1);
