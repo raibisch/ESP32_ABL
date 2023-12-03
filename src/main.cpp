@@ -166,6 +166,7 @@ F11 Unintended opened contactd
 
 
 static unsigned long ABL_PollTime_old = 0;
+static unsigned long ABL_StatusSec_old = 0;
 static unsigned long ABL_kwh_StartTime = 0;
 static unsigned long ABL_Wh_Sum_akt = 0;
 static unsigned long ABL_Wh_Sum_old = 0;
@@ -453,24 +454,24 @@ void ABL_Send(ABL_POLL_STATUS s)
   Serial_ABL.write(tx[i]);
  }
  Serial_ABL.write("\r\n");
-Serial_ABL.flush(true);
- delay(10);
- digitalWrite(ABL_RX_LOW_ENABLE_GPIO, 0);
- delay(500);
+ Serial_ABL.flush(true);
+ digitalWrite(ABL_RX_LOW_ENABLE_GPIO, 0); // Switch from TX to RX
+ delay(600);
  // empty the rx input because of possible trash after first ABL-wakeup call
  while (Serial_ABL.available()) 
  {
     char inChar = (char)Serial_ABL.read();
-  }
+ }
  // send 2x for wakeup from sleep
- digitalWrite(ABL_RX_LOW_ENABLE_GPIO,1);
+ digitalWrite(ABL_RX_LOW_ENABLE_GPIO,1); // Switch form Rx to TX
  for (int i =0; i< tx.length(); i++)
  {
   Serial_ABL.write(tx[i]);
  }
  Serial_ABL.write("\r\n");
  Serial_ABL.flush(true);
- digitalWrite(ABL_RX_LOW_ENABLE_GPIO, 0);
+
+ digitalWrite(ABL_RX_LOW_ENABLE_GPIO, 0); // switch from Tx to Rx
 }
 
  /// @brief Parse the received Data from ABL
@@ -575,22 +576,20 @@ void serialEventABL()
 {
     while (Serial_ABL.available()) 
     {
-    char inChar = (char)Serial_ABL.read();
-    ABL_rx_String += inChar;
-    
-    if (inChar == '\n') 
-    {
+     char inChar = (char)Serial_ABL.read();
+     ABL_rx_String += inChar;
+     if (inChar == '\n') 
+     {
       AsyncWebLog.println("RX"+ ABL_rx_String);
       if (ABL_ParseReceive(ABL_rx_String))
       {
         ABL_rx_timeoutcount = 0;
       }
       ABL_rx_String = "";
-      //Serial_ABL.flush();
       delay(2000);
       setLED(0); // LED off
     }
-  }
+   } // while
 }
 
 
@@ -858,6 +857,14 @@ void initWebServer()
     request->send(SPIFFS, "/config.txt", "text/html", false);
   });
 
+  
+  // config.txt GET
+  server.on("/reboot.html", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+    request->send(404, "text/plain", "RESTART !");
+    ESP.restart();
+  });
+
 
   // ...a lot of code only for icons and favicons ;-))
   server.on("/manifest.json",          HTTP_GET, [](AsyncWebServerRequest *request)
@@ -988,10 +995,10 @@ void initSPIFFS()
 // --------------------------------------------
 void setup()
 {
-  delay(400);
+  delay(800);
   debug_begin(115200);  
   delay(800);
-  //debug_println("Setup-Start");
+  debug_println("Setup-Start");
   initSPIFFS();
   initLED();
   initFileVarStore();
@@ -1006,15 +1013,17 @@ void setup()
 }
 
 
+uint log_timer =0;
 
 void loop()
+
 {
      unsigned long now = millis();
-#ifndef DEBUG_LISTEN_ONLY
+ 
     if ((now - ABL_PollTime_old) >= varStore.varABL_i_Scantime_ms)
     {
        ABL_PollTime_old  = now;
-
+       log_timer = varStore.varABL_i_Scantime_ms / 1000;
         //if (ABL_rx_status.startsWith("A")) // for test without EV
         if ((ABL_rx_status.startsWith("C")) && (ABL_rx_kW > 0))
         {
@@ -1027,8 +1036,9 @@ void loop()
         else
         if (ABL_rx_status.startsWith("no"))
         {
-          ABL_rx_kW = 0;
-          ABL_PollTime_old = now + 10000;
+          //ABL_rx_kW = 0;
+          hist.putULong64("whsum",ABL_Wh_Sum_akt);
+          //ESP.restart();
         }
 
         setLED(1);
@@ -1037,9 +1047,16 @@ void loop()
         saveHistory();
     }
     else
-  #endif
     {
         serialEventABL();
+    }
+
+    if (now -ABL_StatusSec_old >= 1000)
+    {
+      ABL_StatusSec_old = now;
+      log_timer = log_timer -1;
+      String s = "Next Polling in :" + String(log_timer) + ("sec");
+      AsyncWebLog.println(s);
     }
   
  
