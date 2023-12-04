@@ -1,5 +1,21 @@
 #include "AsyncWebOTA.h"
 
+
+#ifdef DEBUG_PRINT
+#define debug_begin(...) Serial.begin(__VA_ARGS__);
+#define debug_print(...) Serial.print(__VA_ARGS__);
+#define debug_write(...) Serial.write(__VA_ARGS__);
+#define debug_println(...) Serial.println(__VA_ARGS__);
+#define debug_printf(...) Serial.printf(__VA_ARGS__);
+#else
+#define debug_begin(...)
+#define debug_print(...)
+#define debug_printf(...)
+#define debug_write(...)
+#define debug_println(...)
+#endif
+
+
 /* 
 Logger page for use with AsyncWebServer
 this code is mostly inspired by
@@ -115,68 +131,7 @@ void AsyncWebOTAClass::begin(AsyncWebServer *server, const char* url)
   }
   */
   });
-  
 
-
-  // TEST Uplaod handler (tut nichts ausser log !!)
-  _server->on("/ota_update2",          HTTP_POST, [&](AsyncWebServerRequest *request)
-  {
-   Serial.println("'/ota_update' -  request content lenght:" + String(request->contentLength()));
-   if (request->args() > 0)
-   {
-     
-        Serial.println("Argument: " + request->argName(0));
-         uint8_t i = 0;
-         String s  = request->arg(i);
-        Serial.println("  Value: " + s);
-
-   } 
-  else
-  {
-    Serial.println("*** ERROR: no filename selected !");
-  }
-   
-   //request->send(SPIFFS, "/config.html", String(), false, setHtmlVar);
-   //AsyncWebServerResponse *response = request->beginResponse((Update.hasError())?500:200, "text/plain", (Update.hasError())?"FAIL":"OK");
-   AsyncWebServerResponse *response = request->beginResponse(200, "text/plain", "OK");
-   response->addHeader("Connection", "close");
-   response->addHeader("Access-Control-Allow-Origin", "*");
-   request->send(response);
-  },[&](AsyncWebServerRequest *request, String filename, size_t index, uint8_t *data, size_t len, bool final) 
-    {
-       
-          //Upload handler chunks in data
-          if (!index) 
-          {
-            if (filename != NULL)
-            {
-             Serial.println("Request-Filename:"+ filename); 
-            }   
-            else
-            {
-              return;
-            }       
-          }
-
-          // Write chunked data to the free sketch space
-          if(len)
-          {
-            Serial.println("len:"+ String(len));    
-           
-          }
-                    
-          if (final) 
-          { 
-            Serial.println("END");
-          }
-          else
-          {
-           return;
-          }
-    }
-  
-  
-  );
 
   /** Code von Andreas:
   *handling uploading firmware file *
@@ -206,8 +161,8 @@ void AsyncWebOTAClass::begin(AsyncWebServer *server, const char* url)
   });
    **/
 
- 
-  // aus AsyncElegantOTA
+  // for test without update
+  //#define NO_REAL_OTA
   _server->on("/ota_update", HTTP_POST, [&](AsyncWebServerRequest *request) 
   {
                 // the request handler is triggered after the upload has finished... 
@@ -230,13 +185,17 @@ void AsyncWebOTAClass::begin(AsyncWebServer *server, const char* url)
                     Serial.println(filename);
                     // z.Z. nur für Programm Daten (U_FLASH)
                     int cmd = U_FLASH;
-                    if (filename.indexOf("spiff") > 2)
+                    if (filename.startsWith("spiff"))
                     {
                       cmd = U_SPIFFS;
-                      Serial.println("SPIFFS");
+                      Serial.println("cmd=U_SPIFFS (Upload Fileystem tor SPIFFS)");
+                    }
+                    else
+                    {
+                      Serial.println("cmd=U_FLASH (Upload Program)");
                     }
                    
-#ifndef MAKE_UPDATE                
+#ifndef NO_REAL_OTA               
                     if (!Update.begin(UPDATE_SIZE_UNKNOWN, cmd))
                     { // Start with max available size
                         Update.printError(Serial);
@@ -250,7 +209,7 @@ void AsyncWebOTAClass::begin(AsyncWebServer *server, const char* url)
                 if(len)
                 {
                     Serial.println("UPDATE lenth:" + String(len));
-#ifndef MAKE_UPDATE
+#ifndef NO_REAL_OTA
                     if (Update.write(data, len) != len) 
                     {
                         return request->send(400, "text/plain", "OTA length does not match!");
@@ -264,7 +223,7 @@ void AsyncWebOTAClass::begin(AsyncWebServer *server, const char* url)
                         Update.printError(Serial);
                         return request->send(400, "text/plain", "Could not end OTA");
                     }
-                     Serial.println("UPDATE: END");
+                    Serial.println("UPDATE: END");
                 }
                 else
                 {

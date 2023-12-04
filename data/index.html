@@ -4,6 +4,9 @@
     <head>
         <title>%DEVICEID%</title>
         <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport">
+        <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+        <meta http-equiv="Pragma" content="no-cache" />
+        <meta http-equiv="Expires" content="0" />
         <link rel="stylesheet" type="text/css" href="style.css">
         <meta charset="UTF-8">
         <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
@@ -66,28 +69,41 @@
                document.getElementById('ABL_KWH_IST').innerHTML = myArray[3];
                document.getElementById('ABL_KWH_SUM').innerHTML = (myArray[4]/1000);
               }
-               // Beispiel : https://code-boxx.com/change-override-css-with-javascript
-              if (myArray[2] == "A1") 
+              myStatus = String(myArray[2]);
+              // Beispiel : https://code-boxx.com/change-override-css-with-javascript
+              if (myStatus.startsWith('A'))
               {
                 document.getElementById('ABL_STATUS').style.color = 'green';
                 document.getElementById('RING_ID').className = "outerring_blink";
                 document.getElementById('RING_ID').style.background = 'green';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
-              else if ((myArray[2] == "B1") || (myArray[2] == "B2"))
+              else if (myStatus.startsWith('B'))
               {
                 document.getElementById('RING_ID').style.background = 'yellow';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
-                
               }
-              else if (myArray[2] == "C2")
+              else if (myStatus.startsWith('C'))
               {
-                document.getElementById('ABL_STATUS').style.color = 'aqua';
+                document.getElementById('ABL_STATUS').style.color = 'blue';
                 document.getElementById('RING_ID').className = "outerring_blink";
-                document.getElementById('RING_ID').style.background = 'aqua';
+                document.getElementById('RING_ID').style.background = 'blue';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'visible';
               }
-              else if (myArray[2] == "noCom")
+              else if (myStatus.startsWith('E'))
+              {
+                document.getElementById('ABL_STATUS').style.color = 'black';
+                document.getElementById('RING_ID').style.background = 'yellow';
+                document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
+              }
+              else if (myStatus.startsWith('F'))
+              {
+                document.getElementById('ABL_STATUS').style.color = 'black';
+                document.getElementById('RING_ID').className = "outerring_blink";
+                document.getElementById('RING_ID').style.background = 'yellow';
+                document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
+              }
+              else if (myStatus.startsWith("no"))
               {
                 document.getElementById('ABL_STATUS').style.color = 'red';
                 document.getElementById('RING_ID').style.background = 'red';

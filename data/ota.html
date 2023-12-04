@@ -11,13 +11,17 @@
 
 <form method='POST' action='/ota_update' enctype='multipart/form-data'>
 
+  <!--
   <INPUT id="otaspiffs" type="radio" name="otatype" value="spiffs">
   <label for="otaspiffs">SPIFFS-DATA</label>
 
   <INPUT id="otaprog" type="radio" name="otatype" value="prog" checked>
   <label for="otaprog">PROGRAM</label>
+  -->
+  <p></p>
+  <div>Select a file 'spiffs.bin' (SPIFFS-Data) or 'firmware.bin' (Program) </div>
 
-  <input class='container' type='file' name='update'>
+  <input class='container' type='file' name='update'  accept='.bin'>
   <input class='buttonred' type='submit' name="startupdate" value='START-UPLOAD'><BR>
   
 </form>

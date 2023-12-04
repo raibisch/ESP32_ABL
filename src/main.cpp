@@ -113,10 +113,13 @@ const char* PARAM_MESSAGE = "message";
 
 
 enum ABL_POLL_STATUS {
-  POLL_Current,      // realisiert und getestet
-  SET_Current,       // realisiert und getestet
-  SET_StopCharge,    // nicht realisiert
-  SET_RestartCharge  // nicht realisiert
+  POLL_Current,      // implemented and testet
+  SET_Current,       // implemented and tested
+  SET_StopCharge,    // implemented (ABL_TX_SET_DISABLE)
+  SET_RestartCharge, // implemented (SET_CURRENT after SET_CURRENT x3E8)
+  SET_DISABLE_WB,    // todo not implemented
+  SET_ENABLE_WB,     // todo not implemented
+  POLL_FIRMWARE      // todo not implemented
 };
 
 
@@ -145,8 +148,8 @@ const String ABL_STATUS_STRING[] = {
 };
 
 /*
-not handeled status messages:
-
+not extra handeled but displayed status messages (from ABL docu):
+=================================================================
 E0 Outlet disabled
 E1 Production test
 E2 EVCC setup mode
@@ -372,8 +375,6 @@ bool saveHistory()
 
   return true;
 }
-
-
 // ----  END EPROM Simulation -----------------------------------------
 
 /// @brief Init ABL communication over RS485
@@ -444,6 +445,15 @@ void ABL_Send(ABL_POLL_STATUS s)
     }
   break; // End Set_Current
 
+  //todo: additional Tx-Commands
+  // 
+  // ModifyState: Register 0x05
+  // Enable:  A1A1
+  // Disable: E0E0 
+  
+  // GetFirmware: Register 0x01
+  
+  
   default:
   break;
  }
@@ -456,8 +466,8 @@ void ABL_Send(ABL_POLL_STATUS s)
  Serial_ABL.write("\r\n");
  Serial_ABL.flush(true);
  digitalWrite(ABL_RX_LOW_ENABLE_GPIO, 0); // Switch from TX to RX
- delay(600);
- // empty the rx input because of possible trash after first ABL-wakeup call
+ delay(1000);
+ // empty the first rx input because of possible trash after first ABL-wakeup call
  while (Serial_ABL.available()) 
  {
     char inChar = (char)Serial_ABL.read();
@@ -556,7 +566,7 @@ cnt:               0      1         2          3 4  5 6  7 8
     forcePolling();
   }
   else
-  if (s.startsWith(">010"))
+  if (s.startsWith(">01"))
   {
      AsyncWebLog.println("*RX-UNKNOWN!:" + s);
   }
@@ -586,7 +596,7 @@ void serialEventABL()
         ABL_rx_timeoutcount = 0;
       }
       ABL_rx_String = "";
-      delay(2000);
+      delay(1000);
       setLED(0); // LED off
     }
    } // while
@@ -777,7 +787,6 @@ void initWebServer()
   //Route for root /index web page
   server.on("/index.html",          HTTP_GET, [](AsyncWebServerRequest *request)
   {
-  
    request->send(SPIFFS, "/index.html", String(), false, setHtmlVar);
   });
 
