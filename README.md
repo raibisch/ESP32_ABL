@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-EUPL1.2-green)](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12)
 
-![Android-App](/pict/Screenshot_app_index_new.png)
+![Android-App](/pict/Screenshot_app_index_new2.png)
 
 Monitor and control your ABL-Wallbox with an WEB-Application and integrate it in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) for less than 10€. 
 

@@ -206,6 +206,16 @@ textarea{
 
 }
 
+.image-btn{
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 25px;
+}
+
+.image-btn img{
+  display: block; /* to remove extra space below image */
+}
 
 @keyframes blinkingBackground {
     50% {

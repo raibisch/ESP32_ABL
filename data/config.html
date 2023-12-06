@@ -18,11 +18,18 @@
    <form action="config.html" method="POST">
      <p>CONFIG-DATA</p>
      <textarea autocorrect="off" name="saveconfig">%CONFIG%</textarea>
-     <p><button class="buttonlink" type="submit">Setup-save</button></p>
+     <p><button class="buttonlink" type="submit">CONFIG-save</button></p>
    </form>
    
-   <p><a class="buttonlink" href="config.txt" download>Setup-download</a></p>
+   <p><a class="buttonlink" href="config.txt" download>CONFIG-download</a></p>
+   <!--
    <a class="buttonlink" href="index.html">back</a>
+   -->
 </table>
+
+<button type="button" class="image-btn" onclick="window.location.href='index.html'"><img src="home.png">HOME</button>
+<button type="button" class="image-btn" onclick="window.location.href='log.html'"><img src="file-list.png" >LOG</button>
+<button type="button" class="image-btn" onclick="window.location.href='setup.html'"><img src="settings.png">SETUP</button>
+
 </body>
 </html>

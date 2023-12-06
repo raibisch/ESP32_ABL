@@ -48,8 +48,16 @@
           <input class="buttonyellow" name="pause" type="submit" value="PAUSE" id="BUTTON_PAUSE">
          </form></p>
 
+          <!--
          <a class="buttonlink" href="setup.html">Setup</a>
          </p>
+        -->
+
+         <button type="button" class="image-btn" onclick="window.location.href='index.html'"><img src="home.png">HOME</button>
+         <button type="button" class="image-btn" onclick="window.location.href='log.html'"><img src="file-list.png" >LOG</button>
+         <button type="button" class="image-btn" onclick="window.location.href='setup.html'"><img src="settings.png">SETUP</button>
+         
+
         
          <script type="text/javascript">
             //var t = new Date();
@@ -112,6 +120,7 @@
               else
               {
                 document.getElementById('ABL_STATUS').style.color = 'black';
+                document.getElementById('RING_ID').className = "outerring_blink";
                 document.getElementById('RING_ID').style.background = 'black';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }

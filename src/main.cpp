@@ -874,6 +874,26 @@ void initWebServer()
     ESP.restart();
   });
 
+  //.. some code for the navigation icons
+
+
+  // ...a lot of code only for icons and favicons ;-))
+  server.on("/home.png",          HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+   request->send(SPIFFS, "/home.png", String(), false);
+  });
+
+  server.on("/file-list.png",          HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+   request->send(SPIFFS, "/file-list.png", String(), false);
+  });
+  server.on("/settings.png",          HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+   request->send(SPIFFS, "/settings.png", String(), false);
+  });
+
+
+
 
   // ...a lot of code only for icons and favicons ;-))
   server.on("/manifest.json",          HTTP_GET, [](AsyncWebServerRequest *request)
