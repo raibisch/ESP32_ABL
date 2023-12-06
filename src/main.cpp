@@ -209,6 +209,7 @@ static long int HexString2int(String s)
 
 
 // UINT64 in String wandeln (geht nicht mit standard "String()")
+//old version see below !!
 String uint64ToString(uint64_t input)
 {
   String result = "";
@@ -227,6 +228,28 @@ String uint64ToString(uint64_t input)
   } while (input);
   return result;
 }
+
+// from comment from "milenko-s"
+// to be testet
+String uint64ToString_new(uint64_t input)
+{
+  String result = "";
+  uint8_t base = 10;
+
+  do
+  {
+    char c = input % base;
+    input /= base;
+
+    //if (c < 10)
+      c += '0';
+    //else
+    //  c += 'A' - 10;
+    result = c + result;
+  } while (input);
+  return result;
+}
+
   
 
 /* ------------------until now not used--------------------------
@@ -410,23 +433,27 @@ void ABL_Send(ABL_POLL_STATUS s)
       case 0:
         tx = String(ABL_TX_SET_DISABLE);
       break;
+      
       case 5:
       case 6:
        tx = String(ABL_TX_SET_6A);
       break;
-     
+
       case 7:
       case 8:
          tx = String(ABL_TX_SET_8A);
       break;
+
       case 9:
       case 10:
           tx = String(ABL_TX_SET_10A);
       break;
+
       case 11:
       case 12:
            tx = String(ABL_TX_SET_12A);
       break;
+
       case 13:
       case 14:
           tx = String(ABL_TX_SET_14A);
@@ -434,6 +461,7 @@ void ABL_Send(ABL_POLL_STATUS s)
 
       case 15:
          tx = String(ABL_TX_SET_15A);
+      break;
 
       case 16:
           tx = String(ABL_TX_SET_16A);
@@ -842,7 +870,7 @@ void initWebServer()
        forcePolling();
        uint a = String(request->arg(i)).toInt();
        AsyncWebLog.println("GET-SET-Imax:" + String(a)+ "A");
-       if ((a >=6 && a <=16) || (a=0))
+       if ((a >=6 && a <=16) || (a==0))
        {
            ABL_tx_Ampere = a;
            ABL_tx_status = SET_Current; // next Send Protocol
