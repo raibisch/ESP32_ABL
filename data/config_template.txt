@@ -7,8 +7,15 @@ varDEVICE_s_Name=ABL-Wallbox;
 varWIFI_s_Mode=STA;
 varWIFI_s_Password=mypassword;
 varWIFI_s_SSID=myssid;
-
-varABL_i_U_netz = 230;   
+ 
 varABL_i_A_soll_low = 6;
 varABL_i_A_soll_high = 16;
 varABL_i_Scantime_ms = 30000;
+
+varABL_i_U_netz = 230;  
+
+;for ABL-Box without current sensor
+;measured for ID.3 pure 2phase
+varABL_i_Watt_16A= 7125; 
+varABL_i_Watt_12A= 5430;
+varABL_i_Watt_08A= 2553;

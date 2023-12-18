@@ -88,13 +88,14 @@
               }
               else if (myStatus.startsWith('B'))
               {
-                document.getElementById('RING_ID').style.background = 'yellow';
+                document.getElementById('ABL_STATUS').style.color = 'Teal'           // gruenblau
+                document.getElementById('RING_ID').style.background = 'Teal';
+                document.getElementById('RING_ID').className = "outerring_blink";
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
               else if (myStatus.startsWith('C'))
               {
-                document.getElementById('ABL_STATUS').style.color = 'blue';
-                document.getElementById('RING_ID').className = "outerring_blink";
+                document.getElementById('ABL_STATUS').style.color = 'blue';    
                 document.getElementById('RING_ID').style.background = 'blue';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'visible';
               }
@@ -106,20 +107,21 @@
               }
               else if (myStatus.startsWith('F'))
               {
-                document.getElementById('ABL_STATUS').style.color = 'black';
+                document.getElementById('ABL_STATUS').style.color = 'red';
                 document.getElementById('RING_ID').className = "outerring_blink";
-                document.getElementById('RING_ID').style.background = 'yellow';
+                document.getElementById('RING_ID').style.background = 'red';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
               else if (myStatus.startsWith("no"))
               {
-                document.getElementById('ABL_STATUS').style.color = 'red';
-                document.getElementById('RING_ID').style.background = 'red';
+                document.getElementById('ABL_STATUS').style.color = 'black';
+                document.getElementById('RING_ID').className = "outerring_blink";
+                document.getElementById('RING_ID').style.background = 'Fuchsia';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
               else
               {
-                document.getElementById('ABL_STATUS').style.color = 'black';
+                //document.getElementById('ABL_STATUS').style.color = 'black';
                 document.getElementById('RING_ID').className = "outerring_blink";
                 document.getElementById('RING_ID').style.background = 'black';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
