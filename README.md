@@ -2,7 +2,7 @@
 
 [![License](https://img.shields.io/badge/license-EUPL1.2-green)](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12)
 
-![Android-App](/pict/Screenshot_app_index_new2.png)
+![Android-App](/pict/Screenshot_app_index.png)
 
 Monitor and control your ABL-Wallbox with an WEB-Application and integrate it in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) for less than 10€. 
 
@@ -11,12 +11,16 @@ The two values could be individual defined in the 'config-data' page (for use wi
 
 With the WEB-API the state and consumption values of the Wallbox could be monitored and charge-current could be set from 6A up to 16A in external applications like homeautomation software.
 
+For (new) ABL-Boxes without internal per phase current sensor, the current could "pre-measured" external and defined in the APP-configuration per Imax setting. So it it possible to have a "poor man's" power and consumption measurement. If you charge every time the same car, the typical power for a defined Ipwm is near to the real measurement with a current-sensor (that has also an error because U is not measured). (I get the consumption from my "offical" smartmeter and set them into the config-file). If the Box has a current-sensor it was automatic detected and the value is calculated based on the current sum of the 3-phases.
+
 Additional functions (Setup) in Web-Interface
 
 * CONFIG-DATA: set and store parameter and WiFi-credentials and the the "Quick-Set charge-current"
 * EVENT-LOG: Serial debug logging
-* OTA-UPDATE: Software update (Over the air update)
+* OTA-UPDATE: Software update (Over the air software update) 
 * HISTORY: Set and Store total kW/h sum in internal FLASH
+
+* V.1. NEW: calulate consuption for ABL-Boxes without internal phase-current-sensor
 
 ### WEB-API for external Software
 
@@ -128,5 +132,14 @@ Projekt was build and testet with PlatformIO.
 Take care to upload the 'data' folder to the SPIFFS filesystem 
 see: https://randomnerdtutorials.com/esp32-vs-code-platformio-spiffs/
 
+## Version History
+V1.0 initial version, first test with real charging car (VW ID.3) 
+
+V1.1 ABL-Box without internal current-sensor: calculate power and consumption from premeasured config-values. 
+
 ## todo
-- Test in 'real live' with plugged and charging car (until now ony tested with wallbox in lab without car pluged in !!)
+- test "PAUSE" function and switch Ipwm at charging time.
+- MQTT-client (does someone need this ?)
+- publish compiled firmware
+
+
