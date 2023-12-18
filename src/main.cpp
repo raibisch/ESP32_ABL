@@ -427,8 +427,7 @@ bool saveHistory()
 // ----  END EPROM Simulation -----------------------------------------
 
 
-/// @brief  caluclate kw 
-            
+/// @brief  caluclate kw          
 static u_long Wh_10 = 0;
 bool calculate_kWh()
 {
