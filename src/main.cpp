@@ -732,9 +732,9 @@ void initWifi()
    else
    {
     debug_printf("INFO-WIFI:STA-Mode\r\n");
-    WiFi.setTxPower(WIFI_POWER_19_5dBm); // maximum !!
+    //WiFi.setTxPower(WIFI_POWER_19_5dBm); // maximum !!
     WiFi.mode(WIFI_STA);
-    WiFi.setTxPower(WIFI_POWER_19_5dBm);
+    //WiFi.setTxPower(WIFI_POWER_19_5dBm);
     WiFi.setHostname(varStore.varDEVICE_s_Name.c_str());
     WiFi.begin(varStore.varWIFI_s_SSID.c_str(), varStore.varWIFI_s_Password.c_str());
     int i = 0;
@@ -1190,12 +1190,12 @@ void loop()
         */
 
         setLED(1);
-        ABL_Send(ABL_tx_status);
+        //ABL_Send(ABL_tx_status);
         testTimeount(); 
     }
     else
     {
-        serialEventABL();
+        //serialEventABL();
     }
 
     if ((now -ABL_StatusSec_old) >= varStore.varABL_i_logtime_ms)
@@ -1214,22 +1214,10 @@ void loop()
          WiFi.disconnect();
          WiFi.reconnect();
       }
-
-      /* ... braucht zu viel Zeit... evt. anders implementieren
-       int n = WiFi.scanNetworks();
-       if (n > 0)
-       {
-         for (int i = 0; i < n; ++i) 
-         {
-          String ssid =  WiFi.SSID(i).c_str();
-          if (ssid == varStore.varWIFI_s_SSID)
-          {
-            AsyncWebLog.println("RSSI: " + String(WiFi.RSSI(i)));
-            break;
-          }
-         }
-       }
-       */
+      else
+      {
+        debug_println(s);
+      }
        
     }
 }
