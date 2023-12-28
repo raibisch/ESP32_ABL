@@ -1,6 +1,5 @@
 <!DOCTYPE HTML>
 <html>
-
     <head>
         <title>%DEVICEID%</title>
         <meta content="width=device-width, initial-scale=1.0, user-scalable=yes" name="viewport">
@@ -21,45 +20,42 @@
       <h2>%DEVICEID%</h2>
       <div class="outerring" id="RING_ID">
        <div class="innerring"></div>
-       <div id="ABL_KWH_IST"class="ringtext_value">---</div>
+       <div id="ABL_KWH_IST" class="ringtext_value">---</div>
        <div class="ringtext_unit">[kW/h]</div>
+       <div class="ringtext_time" id="ABL_CHARGE_TIME">--:--</div>
        <div class="ringtext_status" id="ABL_STATUS">--</div>
      </div>
-         <table>
+     <table>
             <tr>
-              <td class="mywidth" id="ABL_A_SOLL">--</td>
-              <td id="ABL_KW_IST">--</td>
-              <td class="mywidth" id="ABL_KWH_SUM">--</td>
+              <td class="table" id="ABL_A_SOLL">--</td>
+              <td class="table" id="ABL_KW_IST">--</td>
+              <td class="table" id="ABL_KWH_SUM">--</td>
             </tr>
             <tr>
               <th>I-max</th>
               <th>kW-charge</th>
               <th>kW/h-sum</th>
             </tr>
-         </table>
-         </p>
+     </table>
+    </p>
+         <!-- if you want to switch Ipwm from the index-page
          <p><form action="" method="POST" >
           <input class="buttonred" name="ihigh" type="submit" value="%I-HIGH%">
          </form></p>
          <p><form action="" method="POST" >
           <input class="buttongreen" name="ilow" type="submit" value="%I-LOW%">
          </form></p>
-         <p><form action="" method="POST" >
-          <input class="buttonyellow" name="pause" type="submit" value="PAUSE" id="BUTTON_PAUSE">
-         </form></p>
+           -->
+    <p>
+    <form action="" method="POST" >
+     <input class="buttonyellow" name="pause" type="submit" value="PAUSE" id="BUTTON_PAUSE">
+    </form></p>
 
-          <!--
-         <a class="buttonlink" href="setup.html">Setup</a>
-         </p>
-        -->
-
-         <button type="button" class="image-btn" onclick="window.location.href='index.html'"><img src="home.png">HOME</button>
-         <button type="button" class="image-btn" onclick="window.location.href='log.html'"><img src="file-list.png" >LOG</button>
-         <button type="button" class="image-btn" onclick="window.location.href='setup.html'"><img src="settings.png">SETUP</button>
+    <button type="button" class="image-btn" onclick="window.location.href='log.html'"><img src="file-list.png">Log</button>
+    <button type="button" class="image-btn" onclick="window.location.href='setcurrent.html'"><img src="current.png" >Set-Current</button>
+    <button type="button" class="image-btn" onclick="window.location.href='setup.html'"><img src="settings.png">Setup</button>
          
-
-        
-         <script type="text/javascript">
+    <script type="text/javascript">
             //var t = new Date();
             function reqListener ()
             {
@@ -76,9 +72,10 @@
                document.getElementById('ABL_STATUS').innerHTML  = myArray[2];
                document.getElementById('ABL_KWH_IST').innerHTML = myArray[3];
                document.getElementById('ABL_KWH_SUM').innerHTML = (myArray[4]/1000);
+               document.getElementById('ABL_CHARGE_TIME').innerHTML = myArray[5];
               }
               myStatus = String(myArray[2]);
-              // Beispiel : https://code-boxx.com/change-override-css-with-javascript
+              // example : https://code-boxx.com/change-override-css-with-javascript
               if (myStatus.startsWith('A'))
               {
                 document.getElementById('ABL_STATUS').style.color = 'green';
@@ -135,9 +132,6 @@
               oReq.open("GET", "/fetch");
               oReq.send();
             }, 2000);
-
-
-          </script>
+    </script>
     </body>
-
 </html>

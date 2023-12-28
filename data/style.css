@@ -1,97 +1,59 @@
 html {
   font-family: monospace;
   display: inline-block;
-  margin: 0px auto;
+  margin: auto;
   text-align: center;
   font-size:0.8rem;
-  min-width:340px;
+  min-width:320px;
 }
 h1{color: blue;padding: 15px;}
 h3{color:blue;padding:10px;}
 body{ font-weight: bold;}
 
-.button2 {
-  background-color: #f44336;
+.button, .buttonblue, .buttongreen, .buttonred, .buttonyellow, .buttonlink { 
+  display: inline-block;
+  width: 75%;
+  max-width: 300px;
+  padding: 15px 20px;
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 2rem;
+  text-align: center;
+  cursor: pointer;
 }
-
 
 .buttongreen {
   background-color: darkgreen;
-  display: inline-block;
-  width: 300px;
-  padding: 15px 20px;
-  border: none;
-  border-radius: 10px;
-  color: white;
-  font-size: 2rem;
-  text-align: center;
-  cursor: pointer;
+ 
 }
-
 
 .buttonred {
   background-color: #f10b0b;
-  display: inline-block;
-  width: 300px;
-  padding: 15px 20px;
-  border: none;
-  border-radius: 10px;
-  color: white;
-  font-size: 2rem;
-  text-align: center;
-  cursor: pointer;
 }
 
 
 .buttonblue {
   background-color: #36afbf;
-  display: inline-block;
-  width: 300px;
-  padding: 15px 20px;
-  border: none;
-  border-radius: 10px;
-  color: white;
-  font-size: 1.5rem;
-  text-align: center;
-  cursor: pointer;
 }
 
 
 .buttonyellow {
   background-color: #f1d104;
-  display: inline-block;
-  width: 300px;
-  padding: 15px 20px;
-  border: none;
-  border-radius: 10px;
-  color: blue;
-  font-size: 1.6rem;
-  text-align: center;
-  cursor: pointer;
   visibility: hidden;
 }
 
-
 .buttonlink {
   background-color: #008CBA;
-  display: inline-block;
-  width: 270px;
-  padding: 15px 20px;
-  border: none;
-  border-radius: 10px;
-  color: white;
-  font-size: 1.5rem;
-  text-align: center;
-  cursor: pointer;
 }
 
-.mywidth {
-  width: 30%;
+.table {
+  width: 33%;
 }
 
 .container {
   display: inline-block;
-  width: 360px;
+  width: 80%;
   border: 3px solid red;
   border-radius: 10px;
   padding: 15px;  
@@ -112,7 +74,7 @@ input{
 
 table{ margin-left: auto;
   margin-right: auto;
-  width: 300px;}
+ }
 
 th {
   font-size: 1rem;
@@ -131,7 +93,8 @@ td{
 }
 
 textarea{
-  width:30em;
+  width:80%;
+  max-width: 400px;
   height:25em;}
 
 .myblink {
@@ -145,8 +108,8 @@ textarea{
 
 .outerring {
   display: inline-block;
-  width: 200px;
-  height: 200px;
+  width: 250px;
+  height: 250px;
   border-radius: 50%;
   position: relative;
   background-color: black;
@@ -156,8 +119,8 @@ textarea{
 
 .outerring_blink {
   display: inline-block;
-  width: 200px;
-  height: 200px;
+  width: 250px;
+  height:250px;
   border-radius: 50%;
   position: relative;
   background-color: black;
@@ -168,8 +131,8 @@ textarea{
 
 .innerring {
   position: absolute;
-  width: 80%;
-  height: 80%;
+  width: 85%;
+  height: 85%;
   border-radius: 50%;
   background-color: #ffffff;
   top: 50%;
@@ -179,12 +142,11 @@ textarea{
 }
 
 .ringtext_value {
-  font-size: 2.5rem;
+  font-size: 2.7rem;
   position: relative;
   top: 38%;
   text-align: center;
 }
-
 
 .ringtext_unit {
   position: relative;
@@ -192,13 +154,17 @@ textarea{
   text-align: center;
 }
 
+.ringtext_time {
+  position: relative;
+  top: 45%;
+  text-align: center;
+}
 
 .ringtext_status {
   position: relative;
   top: 51%;
   text-align: center;
 }
-
 
 .outer:hover .inner {
   width: 80%;
@@ -210,7 +176,10 @@ textarea{
   cursor: pointer;
   background: none;
   border: none;
+  width: 28%;
+  max-width: 120px;
   padding: 25px;
+  text-align: center;
 }
 
 .image-btn img{
