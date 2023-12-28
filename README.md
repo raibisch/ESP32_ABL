@@ -6,6 +6,11 @@
 
 ![Android-App](/pict/ABL_webcont_b2.png) ![Android-App](/pict/ABL_webcont_setIpwm.png) ![Android-App](/pict/ABL_webcont_eventlog.png) ![Android-App](/pict/ABL_webcont_update.png) 
 
+## Supported Hardware
+
+eMH1 11kW ( > Q2-2021 no internal current sensor)
+eMH1 22kW
+eMH2 22kW (StandAlone Modus)
 
 ## Functions in Web-Interface
 
