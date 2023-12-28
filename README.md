@@ -8,9 +8,10 @@
 
 ## Supported Hardware
 
-eMH1 11kW ( > Q2-2021 no internal current sensor)
-eMH1 22kW
-eMH2 22kW (StandAlone Modus)
+- eMH1 11kW ( old version) --> Power calculation with internal current values
+- eMH1 11kW ( > Q2-2021 no internal current sensor)  --> 'virtual' Power calculation
+- eMH1 22kW --> Power calculation with internal current values
+- eMH2 22kW (StandAlone Modus) --> Power calculation with internal current values
 
 ## Functions in Web-Interface
 

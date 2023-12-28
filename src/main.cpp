@@ -1240,7 +1240,7 @@ void loop()
       AsyncWebLog.println(s);
 
       // Test if wifi is lost from router
-      if ((varStore.varWIFI_s_Mode == "STA") &&(WiFi.status() != WL_CONNECTED))
+      if ((varStore.varWIFI_s_Mode == "STA") && (WiFi.status() != WL_CONNECTED))
       {
          debug_println("Reconnecting to WiFi...");
          saveHistory();
