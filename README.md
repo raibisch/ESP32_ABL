@@ -1,14 +1,26 @@
-# ABL-Wallbox WebControl
+# ABL-Wallbox Web-App
 
 [![License](https://img.shields.io/badge/license-EUPL1.2-green)](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12)
 
-![Android-App](/pict/Screenshot_app_index.png)
+![Android-App](/pict/ABL_webcont_charging.png)
+
+![Android-App](/pict/ABL_webcont_b2.png) ![Android-App](/pict/ABL_webcont_setIpwm.png) ![Android-App](/pict/ABL_webcont_eventlog.png) ![Android-App](/pict/ABL_webcont_update.png) 
+
+
+## Functions in Web-Interface
+
+* INDEX-Page: display wallbox-status and actual parameter (I-max, kw-charge, kW/h, charging-time)
+* SET-Current: "Quick-set" predefined Ipwm values to ABL-Box
+* CONFIG-DATA: set and store parameter and WiFi-credentials and the the "Quick-Set" charge-current
+* EVENT-LOG: Serial debug logging
+* UPDATE: over-the-air (Wifi) Software update
+* HISTORY: Set and Store total kW/h sum in internal FLASH
 
 Monitor and control your ABL-Wallbox with an WEB-Application and integrate it (optional) in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) for less than 10€.
 
 ## 'Virtual' consumption for ABL-Boxes without phase current sensor
 
-For (new) ABL-Boxes without internal per phase current sensor, the current could "pre-measured" external and defined in the APP-configuration per Imax setting. So it it possible to have a "poor man's" power and consumption measurement. If you charge every time the same car, the typical power for a defined Ipwm is near to the real measurement with a current-sensor, but that has also an error, because the voltage 'U' for power calulation (P=U*(I1+I2+I2) is not measured. I get the power from my "offical" smartmeter and set them into the config-file.
+For (new) ABL-Boxes without internal per phase current sensor, the current could "pre-measured" external and defined in the APP-configuration per Imax setting. So it is possible to have a "poor man's" power and consumption measurement. If you charge every time the same car, the typical power for a defined Ipwm is near to the real measurement with a current-sensor, but that has also an error, because the voltage 'U' for power calulation (P=U*(I1+I2+I2) is not measured. I get the power from my "offical" smartmeter and set them into the config-file.
 
 If the Box has a current-sensor it was automatic detected and the value is calculated based on the current sum of the 3-phases...For future versions it would be possible to expand the software to get the power or current over the WEB-API from an external meter.
 
@@ -26,10 +38,10 @@ With the WEB-API the state and consumption values of the Wallbox could be monito
 `http:<your-ip>/fetch`
 
 Receive:
-`8.00,0.00,A1,0.00,103980`
+`8.00,0.00,A1,0.00,103980,00:00:00`
 
 decoded:
-`<Imax [A]>,<aktual Power [kW]>,<Status>,<aktual Work [kW/h]>,<Sum Work [W/h]>`
+`<Imax [A]>,<aktual Power [kW]>,<Status>,<aktual Work [kW/h]>,<Sum Work [W/h]>,<charge-time>`
 
 ### Set value Imax
 
@@ -81,14 +93,6 @@ domoticz_updateDevice(66,'',values[4]) -- kW/h
 domoticz_updateDevice(67,'',values[5]) -- W/h SUM
 ```
 
-## Additional functions (Setup) in Web-Interface
-
-* CONFIG-DATA: set and store parameter and WiFi-credentials and the the "Quick-Set charge-current"
-* EVENT-LOG: Serial debug logging
-* OTA-UPDATE: Software update (Over the air software update) 
-* HISTORY: Set and Store total kW/h sum in internal FLASH
-
-* V.1. NEW: calulate consuption for ABL-Boxes without internal phase-current-sensor
 
 ## Hardware
 
@@ -143,7 +147,7 @@ see: https://randomnerdtutorials.com/esp32-vs-code-platformio-spiffs/
 If you do not want to compile the program from source:
 
 for the ESP32-S2 mini board I supply the actual firmware-version
-* got to subfolder `firmware/lolin_s2_mini/V1_1`
+* got to subfolder `firmware/lolin_s2_mini/V1_2`
 
 * put ESP32-S2 board to flash-mode: 
 ** disconnect USB then press and hold "0"-button
@@ -172,6 +176,8 @@ V1.0 initial version, first test with real charging car (VW ID.3)
 
 V1.1 ABL-Box without internal current-sensor: calculate power and consumption from premeasured config-values. 
 
-## todo
-- test "PAUSE" function and switch Ipwm at charging time.
+V 1.2 index-page redesign, fixes for kW/h-calculation, fetch kW/h sum, Info-page, display chargetime, bugfixes.
+
+## todo or options
 - MQTT-client (does someone need this ?)
+- get actual Power [kW] and Work [kW/h] from external meter
