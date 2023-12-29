@@ -213,7 +213,7 @@ static String ABL_sChargeTime = "--:--:--";
 static uint SYS_RestartCount = 0;
 static uint SYS_TimeoutCount = 0;
 static uint SYS_ChargeCount = 0;
-static String SYS_Version = "V 1.2";
+static String SYS_Version = "V 1.2.1";
 static String SYS_CompileTime =  __DATE__;
 static String SYS_IP = "0.0.0.0";
 
@@ -384,11 +384,13 @@ void initHistory()
    debug_printf("restored = %d\r\n",SYS_RestartCount);
 }
 
+
 bool set_Wh_Sum(unsigned long whs)
 {
   hist.putULong64("whsum", whs);
   return true;
 }
+
 
 bool saveHistory()
 {
@@ -399,14 +401,15 @@ bool saveHistory()
 }
 // ----  END EPROM Simulation -----------------------------------------
 
+//////////////////////////////////////////////////////////
 static float Wh = 0;
 /// @brief calculate aktual an total (sum) of W/h
 /// @param polltime_ms 
 /// @return 
-bool calculate_kWh()
+/////////////////////////////////////////////////////////
+void calculate_kWh()
 {
-   
-   if (ABL_rx_status_old != ABL_rx_status)
+   if (ABL_rx_status_old != ABL_rx_status) // Status is changing
    {
     if (ABL_rx_status_old.startsWith("C"))
     {
@@ -417,12 +420,25 @@ bool calculate_kWh()
     {
       hist.putInt("timeout",SYS_TimeoutCount++);
     }
+    else
+    if (ABL_rx_status.startsWith("A"))
+    {
+     ABL_rx_Isum = 0;
+     ABL_rx_kW = 0;
+     ABL_rx_Wh = 0;
+     ABL_sChargeTime = "        ";
+    }
+    else
+    if (ABL_rx_status.startsWith("B"))
+    {
+          ABL_rx_kW = 0;  
+          ABL_rx_Isum = 0; 
+    }
 
-
-    ABL_rx_status_old = ABL_rx_status;
     saveHistory();
-     Wh = 0;
-     rtc.setTime(0);
+    Wh = 0;
+    rtc.setTime(0);
+    ABL_rx_status_old = ABL_rx_status;
    }
 
    #ifdef DEBUG_WITHOUT_ABL
@@ -462,32 +478,12 @@ bool calculate_kWh()
           ABL_rx_kW = uint32_t(ABL_rx_Isum*varStore.varABL_i_U_netz) / 1000.0;
       }
       
-      //Wh = Wh + float((ABL_rx_kW*1000.0)/float(3600.0/(polltime_ms/1000)));
-      //ABL_rx_Wh = Wh;
-      //debug_print(rtc.getTime());
-      //debug_printf("  Wh-Calculate:%f Wh\r\n",Wh);
       ABL_sChargeTime = rtc.getTime();
-      //ABL_Wh_Sum_akt = ABL_Wh_Sum_old + u_long(ABL_rx_Wh);      // in Watt-hour not in kW !+
-      //ABL_rx_Wh = ABL_rx_kW * (rtc.getEpoch() / 3600);
       Wh = (ABL_rx_kW * rtc.getEpoch()*1000) / 3600;
       ABL_rx_Wh = Wh;
       debug_printf("W/h:%f\r\n", ABL_rx_Wh);
       ABL_Wh_Sum_akt = ABL_Wh_Sum_old + ABL_rx_Wh;
-   }
-   else if (ABL_rx_status.startsWith("A"))
-   {
-     //Wh = 0;
-     ABL_rx_Isum = 0;
-     ABL_rx_kW = 0;
-     ABL_rx_Wh = 0;
-     ABL_sChargeTime = "        ";
-   }
-   else if (ABL_rx_status.startsWith("B"))
-   {
-     ABL_rx_kW = 0;
-   }
-  
-  return true;
+   } 
 }
 
 
@@ -1225,18 +1221,17 @@ void loop()
     {
       ABL_StatusSec_old = now;
       log_timer = log_timer - (varStore.varABL_i_logtime_ms/1000);
+      calculate_kWh();
 #ifdef DEBUG_WITHOUT_ABL
       if (ABL_rx_status.startsWith("no"))
 #else
        if (ABL_rx_status.startsWith("C"))
 #endif
       { 
-       calculate_kWh();
         s = ABL_sChargeTime + " Wh-akt:" + ABL_rx_Wh + " next Tx in:" + log_timer + "sec";
       }
       else
       {s = "Next Tx in :" + String(log_timer) + "sec";}
-
       AsyncWebLog.println(s);
 
       // Test if wifi is lost from router
