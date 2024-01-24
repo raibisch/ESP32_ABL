@@ -186,7 +186,9 @@ V1.1 ABL-Box without internal current-sensor: calculate power and consumption fr
 
 V 1.2 index-page redesign, fixes for kW/h-calculation, fetch kW/h sum, Info-page, display chargetime, bugfixes.
 
-## todo, ideas
+V1.2.2 Bugfix for 'virtual kW/h-calculation' and Modbus timeouts
+
+## todo or options
 - MQTT-client (does someone need this ?)
 - get actual Power [kW] and Work [kW/h] from external meter
 - add connection to Tibber API

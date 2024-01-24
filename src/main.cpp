@@ -1,19 +1,19 @@
 
 #include <Arduino.h>
 #include "SPI.h"
-#include <SPIFFS.h>
+#include "SPIFFS.h"
 #include <WiFi.h>
 #include "WiFiGeneric.h"
 #include "math.h"
-//#include <ArduinoOTA.h>
-//#include <esp_ota_ops.h>
 #include <AsyncTCP.h>
 
 // now set in platformio.ini
-//#define DEBUGPRINT 1    // SET TO 0 OUT TO REMOVE TRACES
-//#define DEBUG_WITHOUT_ABL 1 calculate at "no com"
+//#define DEBUG_PRINT 1    // SET TO 0 OUT TO REMOVE TRACES
+//#define DEBUG_WITHOUT_ABL 1 //calculate at "no com"
+
 
 #ifdef DEBUG_PRINT
+#pragma message("Info : DEBUG_PRINT=1")
 #define debug_begin(...) Serial.begin(__VA_ARGS__);
 #define debug_print(...) Serial.print(__VA_ARGS__);
 #define debug_write(...) Serial.write(__VA_ARGS__);
@@ -28,7 +28,7 @@
 #endif
 
 
-
+#include "driver/temp_sensor.h"
 #include <ESPAsyncWebServer.h>
 #include "ESP32Time.h"
 
@@ -42,13 +42,13 @@
 #define EEPROM_SIZE 12
 
 #ifdef DEF_S2_MINI
-#pragma message(": warning CuteCom>: Set DTR for Serial-communication")
+#pragma message(": Info for CuteCom: Set DTR for Serial-communication")
 #endif
 
 #define ABL_RXD_GPIO 39
 #define ABL_TXT_GPIO 37
 #define ABL_RX_LOW_ENABLE_GPIO 35
-//#define ABL_TX_HIGH_ENABLE_GPIO 33 
+//#define ABL_TX_HIGH_ENABLE_GPIO 33
 #define LED_GPIO  15
 
 
@@ -182,12 +182,11 @@ Ipwm=0.00 I=0.00+0.00+0.00+ Isum=0.00
 Next Polling in :26sec
 
 */
-
-static unsigned long ABL_PollTime_old = 0;
-static unsigned long ABL_StatusSec_old = 0;
-static unsigned long ABL_kwh_StartTime = 0;
-static unsigned long ABL_Wh_Sum_akt = 0;
-static unsigned long ABL_Wh_Sum_old = 0;
+static uint32_t ABL_PollTime_old = 0;
+static uint32_t ABL_StatusSec_old = 0;
+static uint32_t ABL_kwh_StartTime = 0;
+static uint64_t ABL_Wh_Sum_akt = 0;
+static uint64_t ABL_Wh_Sum_old = 0;
 //static unsigned long ABL_pollPeriod = 30000;    // jetz über Config Polling period
 
 // VALUES from ABL
@@ -205,15 +204,15 @@ static bool ABL_rx_aktiv = 0;
 
 static enum ABL_POLL_STATUS ABL_tx_status = POLL_Current;
 // Values to ABL
-static uint ABL_tx_Icmax   = 6;
+static uint16_t ABL_tx_Icmax   = 6;
 static String ABL_rx_String = "";          // a String to hold incoming data
 static uint16_t ABL_rx_timeoutcount = 0;  
 static String ABL_sChargeTime = "--:--:--";
 
-static uint SYS_RestartCount = 0;
-static uint SYS_TimeoutCount = 0;
+static uint16_t SYS_RestartCount = 0;
+static uint16_t SYS_TimeoutCount = 0;
 static uint SYS_ChargeCount = 0;
-static String SYS_Version = "V 1.2.1";
+static String SYS_Version = "V 1.2.2";
 static String SYS_CompileTime =  __DATE__;
 static String SYS_IP = "0.0.0.0";
 
@@ -241,11 +240,7 @@ String uint64ToString(uint64_t input)
   {
     char c = input % base;
     input /= base;
-
-    //if (c < 10)
-      c += '0';
-    //else
-    //  c += 'A' - 10;
+    c += '0';
     result = c + result;
   } while (input);
   return result;
@@ -361,12 +356,66 @@ static void forcePolling()
 bool testTimeount()
 {
         ABL_rx_timeoutcount++;
+
+// DEBUG: Simulate status        
+#ifdef DEBUG_WITHOUT_ABL
+#pragma message("Info : DEBUG_WITHOUT_ABL=1")
+        //ABL_rx_Ipwm = 16;
+        ABL_rx_Ipwm = 50;
+        debug_printf("ABL_rx_timeoutcount:%d\r\n", ABL_rx_timeoutcount);
+        if (ABL_rx_timeoutcount < 2)
+        {
+          ABL_rx_status = ABL_STATUS_STRING[ABL_A1];
+        }
+        else
+        if (ABL_rx_timeoutcount < 3)
+        {
+          ABL_rx_status = ABL_STATUS_STRING[ABL_C2];
+        }
+        else
+        if (ABL_rx_timeoutcount < 4)
+        {
+          ABL_rx_status = "?";
+        } 
+        else
+        if (ABL_rx_timeoutcount < 5)
+        {
+          ABL_rx_status = ABL_STATUS_STRING[ABL_C2];
+        } 
+        else
+        if (ABL_rx_timeoutcount < 6)
+        {
+          ABL_rx_status = ABL_STATUS_STRING[ABL_B2];
+        }
+        else
+        if (ABL_rx_timeoutcount < 7)
+        {
+          ABL_rx_status = "?";
+        }
+        else
+        if(ABL_rx_timeoutcount < 8)
+        {
+          ABL_rx_status = ABL_STATUS_STRING[ABL_A1];
+        }
+        else
+        if(ABL_rx_timeoutcount < 9)
+        {
+          ABL_rx_status = "F1"; // simulate Error Message
+        }
+        else
+        {
+          ABL_rx_timeoutcount = 0;
+          ABL_rx_status = ABL_STATUS_STRING[ABL_B1];
+        }
+        return false;
+#else
         if (ABL_rx_timeoutcount > 2)
         {
           ABL_rx_status = ABL_STATUS_STRING[ABL_TIMEOUT];
           return true;
         }
         return false;
+#endif
 }
 
 // ---- EEPROM Simulation to save Values over Reset and Poweroff-------
@@ -394,6 +443,7 @@ bool set_Wh_Sum(unsigned long whs)
 
 bool saveHistory()
 {
+   debug_printf("ABL_Wh_Sum_akt:%d\r\n",ABL_Wh_Sum_akt)
    hist.putULong64("whsum",ABL_Wh_Sum_akt);
    hist.putUInt("restart", SYS_RestartCount);
    hist.putUInt("timeout", SYS_TimeoutCount);
@@ -402,16 +452,18 @@ bool saveHistory()
 // ----  END EPROM Simulation -----------------------------------------
 
 //////////////////////////////////////////////////////////
-static float Wh = 0;
+static double Wh = 0;
 /// @brief calculate aktual an total (sum) of W/h
 /// @param polltime_ms 
 /// @return 
 /////////////////////////////////////////////////////////
 void calculate_kWh()
 {
+  
    if (ABL_rx_status_old != ABL_rx_status) // Status is changing
    {
-    if (ABL_rx_status_old.startsWith("C"))
+    // Handle old status
+    if (ABL_rx_status_old.startsWith("C") && (ABL_rx_status.startsWith("B")))
     {
       hist.putInt("charge",SYS_ChargeCount++);
     }
@@ -421,12 +473,31 @@ void calculate_kWh()
       hist.putInt("timeout",SYS_TimeoutCount++);
     }
     else
-    if (ABL_rx_status.startsWith("A"))
+    if (ABL_rx_status_old.startsWith("A"))
     {
      ABL_rx_Isum = 0;
      ABL_rx_kW = 0;
      ABL_rx_Wh = 0;
      ABL_sChargeTime = "        ";
+     Wh = 0;
+    }
+    else
+    if (ABL_rx_status_old.startsWith("B")) // Status Charging End
+    {
+          ABL_rx_kW = 0;  
+          ABL_rx_Isum = 0; 
+          Wh = 0;
+          rtc.setTime(0);
+    }
+   
+    // Handle new Status
+    if (ABL_rx_status.startsWith("A"))
+    {
+      ABL_rx_Isum = 0;
+      ABL_rx_kW = 0;
+      ABL_rx_Wh = 0;
+      ABL_sChargeTime = "        ";
+      Wh = 0;
     }
     else
     if (ABL_rx_status.startsWith("B"))
@@ -435,18 +506,16 @@ void calculate_kWh()
           ABL_rx_Isum = 0; 
     }
 
-    saveHistory();
-    Wh = 0;
-    rtc.setTime(0);
-    ABL_rx_status_old = ABL_rx_status;
-   }
 
-   #ifdef DEBUG_WITHOUT_ABL
-   ABL_rx_Ipwm = 10; // for TEST  --> 4500W --> 4500W/h
-   if (ABL_rx_status.startsWith("no")) // TEST
-   #else
+    saveHistory();
+    // JG 20.1.2024 evt. Problem bei status '?' 
+    // Wh = 0; 
+    // rtc.setTime(0);
+    
+    ABL_rx_status_old = ABL_rx_status;
+   } // End Status is changing
+
    if (ABL_rx_status.startsWith("C")) // is charging
-   #endif
    {
       if ( ABL_rx_Isum == 0) // virtual I-values: calculation with Watt Values from config-values
       {
@@ -479,11 +548,13 @@ void calculate_kWh()
       }
       
       ABL_sChargeTime = rtc.getTime();
-      Wh = (ABL_rx_kW * rtc.getEpoch()*1000) / 3600;
-      ABL_rx_Wh = Wh;
-      debug_printf("W/h:%f\r\n", ABL_rx_Wh);
-      ABL_Wh_Sum_akt = ABL_Wh_Sum_old + ABL_rx_Wh;
-   } 
+      Wh = (ABL_rx_kW * (rtc.getEpoch()*1000)) / (double)3600.0;
+
+      ABL_rx_Wh = round(Wh);  
+      debug_printf("W/h:%d\r\n", ABL_rx_Wh);
+      ABL_Wh_Sum_akt = ABL_Wh_Sum_akt + ABL_rx_Wh;
+    
+  } 
 }
 
 
@@ -841,8 +912,16 @@ String setHtmlVar(const String& var)
   else
   if (var == "INFO")
   {
-     return "Version      :" + SYS_Version + 
+    temp_sensor_config_t temp_sensor = TSENS_CONFIG_DEFAULT();
+    temp_sensor.dac_offset = TSENS_DAC_L2;  // TSENS_DAC_L2 is default; L4(-40°C ~ 20°C), L2(-10°C ~ 80°C), L1(20°C ~ 100°C), L0(50°C ~ 125°C)
+    temp_sensor_set_config(temp_sensor);
+    temp_sensor_start();
+    float temp_celsius = 0;
+    temp_sensor_read_celsius(&temp_celsius);
+  
+     return "Version    :"   + SYS_Version + 
             "\nBuild      :" + SYS_CompileTime + 
+            "\nTemp(C)    :" + String(temp_celsius) +
             "\nIP-Addr    :" + SYS_IP +
             "\nTimeout-Cnt:" + SYS_TimeoutCount + 
             "\nCharge-Cnt :" + SYS_ChargeCount + 
@@ -1185,24 +1264,22 @@ void setup()
 }
 
 
+
+
 static time_t charge_time;
 static uint log_timer =0;
 static uint32_t tmp_poll_time_ms = 0;
 static unsigned long now = 0;
 static String s;
 void loop()
-
 {
     now = millis();
   
-#ifdef DEBUG_WITHOUT_ABL
-    if (ABL_rx_status.startsWith("no"))
-#else
     if (ABL_rx_status.startsWith("C"))
-#endif
     { tmp_poll_time_ms = 10000;}  // while charging 10sec polling.
     else
     { tmp_poll_time_ms = varStore.varABL_i_Scantime_ms;} // value > 30sec reduces standby power 
+
 
     if ((now - ABL_PollTime_old) >= tmp_poll_time_ms)
     {
@@ -1217,16 +1294,14 @@ void loop()
         serialEventABL();
     }
 
+
     if ((now -ABL_StatusSec_old) >= varStore.varABL_i_logtime_ms)
     {
       ABL_StatusSec_old = now;
       log_timer = log_timer - (varStore.varABL_i_logtime_ms/1000);
       calculate_kWh();
-#ifdef DEBUG_WITHOUT_ABL
-      if (ABL_rx_status.startsWith("no"))
-#else
-       if (ABL_rx_status.startsWith("C"))
-#endif
+
+      if (ABL_rx_status.startsWith("C"))
       { 
         s = ABL_sChargeTime + " Wh-akt:" + ABL_rx_Wh + " next Tx in:" + log_timer + "sec";
       }
