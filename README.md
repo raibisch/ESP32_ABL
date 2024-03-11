@@ -21,6 +21,8 @@
 - EVENT-LOG: Serial debug logging
 - UPDATE: over-the-air (Wifi) Software update
 - HISTORY: Set and Store total kW/h sum in internal FLASH
+- INFO: Version, Build, Temp(ESP-intern), IP, Timeout, Charge-Cnt, RSSI
+
 
 Monitor and control your ABL-Wallbox with an WEB-Application and integrate it (optional) in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) for less than 10€.
 
@@ -34,7 +36,8 @@ If the Box has a current-sensor it was automatic detected and the value is calcu
 
 ## Manual Charge-Current-Setting
 
-The user interface was designed very simply to enable manual switching between two charging currents (possible application: reduced charging current for operation with a PV system).
+The user interface was designed very simply to enable manual switching between two charging currents (possible application: ABL-Wallbox-kWh Gesamt
+ABL-Wallbox-kWh Gesamtreduced charging current for operation with a PV system).
 The two values could be individual defined in the 'config-data' page (for external setting use the WEB-API)
 
 ## External Charge-Current-Setting and reading values (WEB-API) 
@@ -55,10 +58,64 @@ decoded:
 
 `http:<your-ip>/fetch?imax=xx` (xx= 6,8,10,12,14,16)
 
-### Domoticz Integration
-
+## Home-Assistent Integration
 ...see above 'WEB-API' for other external integration (e.g. other homeautomation software)
 
+![HOMEASSI](/pict/homeassi.png)
+
+add to **configuration.yaml**:
+
+```YAML
+rest:
+    scan_interval: 20
+    resource: http://192.168.2.108/fetch
+    sensor:
+      - name: "ABL-Wallbox Imax"
+        unique_id : "sensor_abl_imax"
+        icon: "mdi:ev-station"
+        value_template: '{{value.split(",")[0]}}'
+        unit_of_measurement: "A"
+        device_class: current
+
+      - name: "ABL-Wallbox kw"
+        unique_id : "sensor_abl_kw"
+        icon: "mdi:ev-station"
+        value_template: '{{value.split(",")[1]}}'
+        unit_of_measurement: "kW"
+        device_class: power
+
+      - name: "ABL-Wallbox-Status"
+        unique_id : "sensor_abl_status"
+        icon: "mdi:ev-station"
+        value_template: '{{value.split(",")[2]}}'
+      
+      - name: "ABL-Wallbox-kWh akt."
+        unique_id : "sensor_abl_kwhakt"
+        icon: "mdi:ev-station"
+        value_template: '{{float(value.split(",")[3])/1000}}'
+        unit_of_measurement: kWh
+        device_class: energy
+     
+      - name: "ABL-Wallbox-kWh Gesamt"
+        unique_id : "sensor_abl_kwhsum"
+        icon: "mdi:ev-station"
+        value_template: '{{float(value.split(",")[4])/1000}}'
+        unit_of_measurement: kWh
+        device_class: energy
+        state_class: total
+
+rest_command:
+  abl_set_imax_6a:
+    url: "http://192.168.2.108/fetch?imax=6"
+    method: GET
+  abl_set_imax_16a:
+    url: "http://192.168.2.108/fetch?imax=16"
+    method: GET
+```
+
+## Domoticz Integration
+
+...see above 'WEB-API' for other external integration (e.g. other homeautomation software)
 ![Domoticz](/pict/domoticz.png)
 
 #### Domoticz Configuration
@@ -188,7 +245,16 @@ V 1.2 index-page redesign, fixes for kW/h-calculation, fetch kW/h sum, Info-page
 
 V1.2.2 Bugfix for 'virtual kW/h-calculation' and Modbus timeouts
 
-## todo or options
-- MQTT-client (does someone need this ?)
+## Ideas:
+- MQTT-client 
 - get actual Power [kW] and Work [kW/h] from external meter
-- add connection to Tibber API
+- get actual current from current sensor and calulate Power and Work
+- store more history data (last charging data)
+- get history-time from ntp (could work only in 'STA' network mode)
+
+
+## other extentions:
+- add Ethernet port to esp32
+https://www.roboter-bausatz.de/p/wt32-eth01-esp32-modul-mit-ethernet-bluetooth-wifi
+https://mischianti.org/esp32-ethernet-w5500-with-plain-http-and-ssl-https/
+

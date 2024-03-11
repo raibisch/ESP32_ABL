@@ -361,7 +361,7 @@ bool testTimeount()
 #ifdef DEBUG_WITHOUT_ABL
 #pragma message("Info : DEBUG_WITHOUT_ABL=1")
         //ABL_rx_Ipwm = 16;
-        ABL_rx_Ipwm = 50;
+        ABL_rx_Ipwm = 10;
         debug_printf("ABL_rx_timeoutcount:%d\r\n", ABL_rx_timeoutcount);
         if (ABL_rx_timeoutcount < 2)
         {
@@ -378,27 +378,27 @@ bool testTimeount()
           ABL_rx_status = "?";
         } 
         else
-        if (ABL_rx_timeoutcount < 5)
+        if (ABL_rx_timeoutcount < 8)
         {
           ABL_rx_status = ABL_STATUS_STRING[ABL_C2];
         } 
         else
-        if (ABL_rx_timeoutcount < 6)
+        if (ABL_rx_timeoutcount < 9)
         {
           ABL_rx_status = ABL_STATUS_STRING[ABL_B2];
         }
         else
-        if (ABL_rx_timeoutcount < 7)
+        if (ABL_rx_timeoutcount < 10)
         {
           ABL_rx_status = "?";
         }
         else
-        if(ABL_rx_timeoutcount < 8)
+        if(ABL_rx_timeoutcount < 11)
         {
           ABL_rx_status = ABL_STATUS_STRING[ABL_A1];
         }
         else
-        if(ABL_rx_timeoutcount < 9)
+        if(ABL_rx_timeoutcount < 12)
         {
           ABL_rx_status = "F1"; // simulate Error Message
         }
@@ -443,6 +443,7 @@ bool set_Wh_Sum(unsigned long whs)
 
 bool saveHistory()
 {
+   ABL_Wh_Sum_old = ABL_Wh_Sum_akt;
    debug_printf("ABL_Wh_Sum_akt:%d\r\n",ABL_Wh_Sum_akt)
    hist.putULong64("whsum",ABL_Wh_Sum_akt);
    hist.putUInt("restart", SYS_RestartCount);
@@ -459,59 +460,44 @@ static double Wh = 0;
 /////////////////////////////////////////////////////////
 void calculate_kWh()
 {
-  
+   if (ABL_rx_status.startsWith("?")) // no calulation at unvalid data
+   {
+    return;
+   }
+
+   if (ABL_rx_status.startsWith("no")) // no calulation at timeout
+   {
+    return;
+   }
+
    if (ABL_rx_status_old != ABL_rx_status) // Status is changing
    {
-    // Handle old status
-    if (ABL_rx_status_old.startsWith("C") && (ABL_rx_status.startsWith("B")))
+
+    // end charging
+    if (ABL_rx_status_old.startsWith("C"))
     {
+      saveHistory();
       hist.putInt("charge",SYS_ChargeCount++);
     }
-    else
-    if (ABL_rx_status_old.startsWith("no"))
+    
+    // start charging
+    if (ABL_rx_status.startsWith("C"))
     {
-      hist.putInt("timeout",SYS_TimeoutCount++);
+      saveHistory();
+      rtc.setTime(1);
+      ABL_PollTime_old = 1;
+      ABL_rx_Isum = 0;
+      ABL_rx_kW = 0;
     }
-    else
-    if (ABL_rx_status_old.startsWith("A"))
-    {
-     ABL_rx_Isum = 0;
-     ABL_rx_kW = 0;
-     ABL_rx_Wh = 0;
-     ABL_sChargeTime = "        ";
-     Wh = 0;
-    }
-    else
-    if (ABL_rx_status_old.startsWith("B")) // Status Charging End
-    {
-          ABL_rx_kW = 0;  
-          ABL_rx_Isum = 0; 
-          Wh = 0;
-          rtc.setTime(0);
-    }
-   
-    // Handle new Status
+  
     if (ABL_rx_status.startsWith("A"))
     {
+      saveHistory();
       ABL_rx_Isum = 0;
       ABL_rx_kW = 0;
       ABL_rx_Wh = 0;
       ABL_sChargeTime = "        ";
-      Wh = 0;
     }
-    else
-    if (ABL_rx_status.startsWith("B"))
-    {
-          ABL_rx_kW = 0;  
-          ABL_rx_Isum = 0; 
-    }
-
-
-    saveHistory();
-    // JG 20.1.2024 evt. Problem bei status '?' 
-    // Wh = 0; 
-    // rtc.setTime(0);
-    
     ABL_rx_status_old = ABL_rx_status;
    } // End Status is changing
 
@@ -552,7 +538,7 @@ void calculate_kWh()
 
       ABL_rx_Wh = round(Wh);  
       debug_printf("W/h:%d\r\n", ABL_rx_Wh);
-      ABL_Wh_Sum_akt = ABL_Wh_Sum_akt + ABL_rx_Wh;
+      ABL_Wh_Sum_akt = ABL_Wh_Sum_old + ABL_rx_Wh;
     
   } 
 }
@@ -1306,17 +1292,19 @@ void loop()
         s = ABL_sChargeTime + " Wh-akt:" + ABL_rx_Wh + " next Tx in:" + log_timer + "sec";
       }
       else
-      {s = "Next Tx in :" + String(log_timer) + "sec";}
+      {
+        s = "Next Tx in :" + String(log_timer) + "sec";
+      }
       AsyncWebLog.println(s);
 
       // Test if wifi is lost from router
       if ((varStore.varWIFI_s_Mode == "STA") && (WiFi.status() != WL_CONNECTED))
       {
          debug_println("Reconnecting to WiFi...");
-         saveHistory();
          delay(100);
          if (!WiFi.reconnect())
          {
+           saveHistory();
            hist.putInt("restart",SYS_RestartCount++);
            delay(200);
           ESP.restart();
