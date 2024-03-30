@@ -3,6 +3,4 @@
 config.txt
 *.fzz
 screenshots_*
-
-
-
+sdkconfig.*

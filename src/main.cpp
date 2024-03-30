@@ -7,6 +7,10 @@
 #include "math.h"
 #include <AsyncTCP.h>
 
+#ifdef USE_ETH_INSTEAD_WIFI
+#include <ETH.h>
+#endif
+
 // now set in platformio.ini
 //#define DEBUG_PRINT 1    // SET TO 0 OUT TO REMOVE TRACES
 //#define DEBUG_WITHOUT_ABL 1 //calculate at "no com"
@@ -28,7 +32,11 @@
 #endif
 
 
+#ifndef WITHOUT_TEMP
 #include "driver/temp_sensor.h"
+#endif
+
+
 #include <ESPAsyncWebServer.h>
 #include "ESP32Time.h"
 
@@ -44,13 +52,6 @@
 #ifdef DEF_S2_MINI
 #pragma message(": Info for CuteCom: Set DTR for Serial-communication")
 #endif
-
-#define ABL_RXD_GPIO 39
-#define ABL_TXT_GPIO 37
-#define ABL_RX_LOW_ENABLE_GPIO 35
-//#define ABL_TX_HIGH_ENABLE_GPIO 33
-#define LED_GPIO  15
-
 
 #define ABL_ENABLE_TX HIGH
 #define ABL_ENABLE_RX LOW
@@ -281,15 +282,20 @@ static byte calculateLRC(String s)
 ////////////////////////////////////////////
 void initLED()
 {
+#ifndef WITHOUT_LED
   pinMode(LED_GPIO, OUTPUT);
   digitalWrite(LED_GPIO, HIGH);
+#endif
 }
 
 /// @brief  set builtin LED
 /// @param i = HIGH / LOW
 void setLED(uint8_t i)
 {
+   debug_printf("LED light %d\r\n", i);
+#ifndef WITHOUT_LED
   digitalWrite(LED_GPIO, i);
+#endif
 }
 
 
@@ -548,6 +554,8 @@ void calculate_kWh()
 /// @brief Init ABL communication over RS485
 void ABL_init()
 {
+    debug_printf("ABL_init: parameters: ABL_RXD_GPIO=%d, ABL_TXT_GPIO=%d, ABL_RX_LOW_ENABLE_GPIO=%d\r\n", ABL_RXD_GPIO, ABL_TXT_GPIO, ABL_RX_LOW_ENABLE_GPIO);
+    debug_println("ABL_init: start to initialize...");
     Serial_ABL.begin(38400, SERIAL_8E1, ABL_RXD_GPIO, ABL_TXT_GPIO);
     ABL_rx_String="";
     //ABL_rx_String.reserve(200);
@@ -555,9 +563,12 @@ void ABL_init()
     digitalWrite(ABL_RX_LOW_ENABLE_GPIO, 0);
     delay(1);
     //Serial_ABL.flush();
+    debug_println("ABL_init: check serial connection...");
     while(Serial_ABL.available())
-    {Serial_ABL.read();}
-    debug_println("ABL_init OK!");
+    {
+        Serial_ABL.read();
+    }
+    debug_println("ABL_init: OK!");
 }
 
 /// @brief Send to ABL
@@ -766,6 +777,33 @@ void serialEventABL()
    } // while
 }
 
+#ifdef USE_ETH_INSTEAD_WIFI
+//////////////////////////////////////////
+/// @brief Init Ethernet
+/////////////////////////////////////////
+void initEthernet()
+{
+    debug_print("Starting ETH interface...");
+    ETH.begin();
+    delay(200);
+    ETH.setHostname(varStore.varDEVICE_s_Name.c_str());
+
+    debug_print("ETH MAC: ");
+    debug_print(ETH.macAddress());
+    debug_print("IP Address: ");
+    debug_print(ETH.localIP());
+    SYS_IP = ETH.localIP().toString();
+    return;
+}
+
+//////////////////////////////////////////
+/// @brief Manage the Wifi Connection
+/////////////////////////////////////////
+void handleEthernetConnection() 
+{
+}
+#endif // USE_ETH_INSTEAD_WIFI
+
 //////////////////////////////////////////
 /// @brief Init Wifi
 /////////////////////////////////////////
@@ -820,6 +858,26 @@ void initWifi()
    }
 
   return;
+}
+
+//////////////////////////////////////////
+/// @brief Manage the Wifi Connection
+/////////////////////////////////////////
+void handleWifiConnection() 
+{
+    // Test if wifi is lost from router
+    if ((varStore.varWIFI_s_Mode == "STA") && (WiFi.status() != WL_CONNECTED))
+    {
+        debug_println("Reconnecting to WiFi...");
+        delay(100);
+        if (!WiFi.reconnect())
+        {
+            saveHistory();
+            hist.putInt("restart",SYS_RestartCount++);
+            delay(200);
+            ESP.restart();
+        } 
+    }
 }
 
 static String readString(File s) 
@@ -898,16 +956,21 @@ String setHtmlVar(const String& var)
   else
   if (var == "INFO")
   {
+#ifndef WITHOUT_TEMP
     temp_sensor_config_t temp_sensor = TSENS_CONFIG_DEFAULT();
     temp_sensor.dac_offset = TSENS_DAC_L2;  // TSENS_DAC_L2 is default; L4(-40°C ~ 20°C), L2(-10°C ~ 80°C), L1(20°C ~ 100°C), L0(50°C ~ 125°C)
     temp_sensor_set_config(temp_sensor);
     temp_sensor_start();
     float temp_celsius = 0;
     temp_sensor_read_celsius(&temp_celsius);
+    String temp = String(temp_celsius);
+#else
+    String temp = "(unknown)";
+#endif // WITHOUT_TEMP
   
      return "Version    :"   + SYS_Version + 
             "\nBuild      :" + SYS_CompileTime + 
-            "\nTemp(C)    :" + String(temp_celsius) +
+            "\nTemp(C)    :" + temp +
             "\nIP-Addr    :" + SYS_IP +
             "\nTimeout-Cnt:" + SYS_TimeoutCount + 
             "\nCharge-Cnt :" + SYS_ChargeCount + 
@@ -966,6 +1029,7 @@ void Handle_Index_Post(AsyncWebServerRequest *request)
 
 void initWebServer()
 { 
+  debug_print("Init web server...\n");
   //Route for root / web page
   server.on("/",          HTTP_GET, [](AsyncWebServerRequest *request)
   {
@@ -1236,11 +1300,17 @@ void setup()
   delay(800);
   debug_println("Setup-Start");
   initSPIFFS();
+#ifndef WITHOUT_LED
   initLED();
+#endif
   initFileVarStore();
   initHistory();
   delay(200);
+#ifdef USE_ETH_INSTEAD_WIFI
+  initEthernet();
+#else
   initWifi();
+#endif
   delay(200);
   initWebServer();
   ABL_init();
@@ -1248,8 +1318,6 @@ void setup()
   forcePolling();
   rtc.setTime(0);
 }
-
-
 
 
 static time_t charge_time;
@@ -1297,21 +1365,11 @@ void loop()
       }
       AsyncWebLog.println(s);
 
-      // Test if wifi is lost from router
-      if ((varStore.varWIFI_s_Mode == "STA") && (WiFi.status() != WL_CONNECTED))
-      {
-         debug_println("Reconnecting to WiFi...");
-         delay(100);
-         if (!WiFi.reconnect())
-         {
-           saveHistory();
-           hist.putInt("restart",SYS_RestartCount++);
-           delay(200);
-          ESP.restart();
-         } 
-      }
-
-       
+#ifdef USE_ETH_INSTEAD_WIFI
+      handleEthernetConnection();
+#else
+      handleWifiConnection();
+#endif
     }
 }
 
