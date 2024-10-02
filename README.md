@@ -163,6 +163,10 @@ domoticz_updateDevice(67,'',values[5]) -- W/h SUM
 ## Hardware
 
 This example is realised with an 'ESP32-S2 mini' board and an 'MAX485 TTL to RS485' Converter. 
+The Olimex ESP32-POE has integrated Ethernet, supports Power over Ethernet and has a 5V/GND output for powering the "MAX485 TTL to RS485" Converter.
+You need to build the ESP firmware by yourself with platformIO.
+Have a look at the platformio.ini and adjust as you need it. 
+Additionally, have a look a the GPIO PINs as specified here: https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/resources/ESP32-POE-GPIO.png
 ...but any other ESP-Board could be used with small modifications in the code and platformio.ini.
 
 ![Fritzing](/pict/esp32_abl_fritzing.png) ![prototype](/pict/platine_prototype.jpg) 
@@ -207,6 +211,13 @@ Projekt was build and testet with PlatformIO.
 
 Take care to upload the 'data' folder to the SPIFFS filesystem 
 see: https://randomnerdtutorials.com/esp32-vs-code-platformio-spiffs/
+
+With the following two command you can create and upload the SPIFFS image:
+
+```
+pio run --target buildfs
+pio run --target uploadfs
+```
 
 ### Flash Program (without PlatformIO or Arduino-IDE)
 
