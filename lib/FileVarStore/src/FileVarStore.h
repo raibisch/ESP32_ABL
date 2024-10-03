@@ -45,7 +45,8 @@ protected:
     String GetVarString(String name);
     int32_t GetVarInt(String name);
     int32_t GetVarInt(String name, int32_t defaultvalue);
-    float GetVarFloat(String name);
+    float GetVarFloat(String name, float defaultvalue);
+    struct tm GetTime(String name);
 
     bool SetVar(String sKey, int32_t iVal); // noch nicht implementiert
     bool _isLoaded = false;

@@ -19,12 +19,53 @@
          <p><form action="" method="POST" >
           <input class="buttongreen" name="ilow" type="submit" value="%I-LOW%">
          </form></p>
-
+      
+         <div style="height: 50px; margin-left: 90px; margin-right: 96px;">
+            <input class="slider" type="range" id="pwmSlider" min="6" max="16" step="2" value="%IMAX%"  list="values" />
+            <datalist id="values" style="--list-length: 6;">   
+                  <option>6</option>
+                  <option>8</option>
+                  <option>10</option>
+                  <option>12</option>
+                  <option>14</option>
+                  <option>16</option>
+            </datalist>
+         </div></p>
+        
+         <span id="textSliderValue">%IMAX% [A]</span></p>
          <div style="height: 100px;"> </div>
 
          <button type="button" class="image-btn" onclick="window.location.href='index.html'"><img src="home.png">HOME</button>
-         <button style="width: 100px;" type="button" class="image-btn" > </button>
+         <button type="button" class="image-btn" > </button>
          <button type="button" class="image-btn" onclick="window.location.href='setup.html'"><img src="settings.png">Setup</button>
+
+         <script type="text/javascript">
+
+            const input = document.getElementById('pwmSlider');
+            output = document.getElementById('textSliderValue');
+
+            input.onchange = function()
+            {
+                var sliderValue = document.getElementById("pwmSlider").value;
+                document.getElementById("textSliderValue").innerHTML = sliderValue + " [A]";
+                console.log(sliderValue);
+                var xhr = new XMLHttpRequest();
+                xhr.open("GET", "/fetch?imax="+sliderValue, true);
+                xhr.send();
+                window.location.href = 'index.html';
+            };
+            //input.onchange();
+
+           /*
+           input.oninput = function() {
+              output.innerHTML = values[this.value];
+           };
+
+           // set the default value
+           input.oninput();
+           */
+            
+         </script>
     </body>
 
 </html>

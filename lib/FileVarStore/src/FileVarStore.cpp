@@ -1,6 +1,5 @@
 #include "FileVarStore.h"
 
-
 //----------------------------------------------------public Functions----------------------------------------------------
 
 //default constructor 
@@ -43,6 +42,9 @@ bool FileVarStore::Load()
 
   _sBuf = configFile.readString();
   _sBuf.replace(" ","");
+
+  _sBuf.replace(";var",";"); // dirty hack for comment before var-definition
+  _sBuf.replace("; var", ";");
 
   GetVariables(); // virtual !!
 
@@ -92,12 +94,14 @@ String FileVarStore::GetVarString(String sK)
   debug_print(sK+":");
   debug_print(sVal); 
   debug_printf(" length:%d\r\n", sVal.length());
+
+  // by JG 26.04.2024 trick for sprintf '%' modifier
+  sVal.replace('&','%');
   return sVal;
 }
 
 int32_t FileVarStore::GetVarInt(String sKey)
 {   
-  
   int32_t val = 0;
   int posStart = _sBuf.indexOf(sKey);
   if (posStart < 0)
@@ -119,9 +123,8 @@ int32_t FileVarStore::GetVarInt(String sKey)
  
 }
 
-int32_t FileVarStore::GetVarInt(String sKey, int32_t defaultvalue)
+int32_t FileVarStore::GetVarInt(String sKey, int32_t defaultvalue=0)
 {   
-  
   int32_t val = 0;
   int posStart = _sBuf.indexOf(sKey);
   if (posStart < 0)
@@ -129,7 +132,7 @@ int32_t FileVarStore::GetVarInt(String sKey, int32_t defaultvalue)
      debug_print("key:'"+sKey+ "' not found set defaultvalue: ");
      debug_println(val); 
     val = defaultvalue;
-    return -1;
+    return val;
   }
   //Serial.printf("PosStart1:%d", posStart);
   posStart = _sBuf.indexOf('=', posStart);
@@ -146,7 +149,7 @@ int32_t FileVarStore::GetVarInt(String sKey, int32_t defaultvalue)
 }
 
 
-float FileVarStore::GetVarFloat(String sKey)
+float FileVarStore::GetVarFloat(String sKey, float defaultvalue=0)
 {
   float val = 0;
   int posStart = _sBuf.indexOf(sKey);
@@ -167,6 +170,39 @@ float FileVarStore::GetVarFloat(String sKey)
   debug_println(val); 
   return val;
 }
+
+ /// @brief convert myValue=22:35 ---> tm_hour  and tm_min 
+ ///         valid: tm_year =1  unvalid: tm_year=0
+ /// @param sKey 
+ /// @return 
+ struct tm FileVarStore::GetTime(String sKey)
+ {
+   struct tm xtime;
+   xtime.tm_year = 1;
+
+   int32_t val = 0;
+   int posStart = _sBuf.indexOf(sKey);
+   if (posStart < 0)
+   {
+     debug_println("key:'"+sKey+ "' not found!!");
+     xtime.tm_year = 0;
+     return xtime;
+   }
+  //Serial.printf("PosStart1:%d", posStart);
+  posStart = _sBuf.indexOf('=', posStart);
+  //Serial.printf("PosStart2:%d", posStart);
+  int posEnd   = _sBuf.indexOf(':', posStart);
+  String sVal = _sBuf.substring(posStart+1,posEnd); 
+  val =sVal.toInt();
+  xtime.tm_hour = val;
+  posStart = posEnd;
+  posEnd   = _sBuf.indexOf('\n', posStart);
+  sVal = _sBuf.substring(posStart+1, posEnd);
+  val = sVal.toInt();
+  xtime.tm_min = val;
+  return xtime;
+ }
+
 
 bool FileVarStore::SetVar(String sKey, int32_t iVal)
 {

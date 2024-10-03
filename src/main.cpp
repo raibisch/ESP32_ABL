@@ -11,6 +11,10 @@
 #include <ETH.h>
 #endif
 
+#ifdef MQTT_ENABLE
+#include <MQTT.h>
+#endif
+
 // now set in platformio.ini
 //#define DEBUG_PRINT 1    // SET TO 0 OUT TO REMOVE TRACES
 //#define DEBUG_WITHOUT_ABL 1 //calculate at "no com"
@@ -40,14 +44,12 @@
 #include <ESPAsyncWebServer.h>
 #include "ESP32Time.h"
 
-// fuer EEPROM Emulation
+// for EEPROM Emulation
 #include <Preferences.h>
 
 #include "FileVarStore.h"
 #include "AsyncWebLog.h"
 #include "AsyncWebOTA.h"
-
-#define EEPROM_SIZE 12
 
 #ifdef DEF_S2_MINI
 #pragma message(": Info for CuteCom: Set DTR for Serial-communication")
@@ -109,6 +111,9 @@ HardwareSerial Serial_ABL(1);
 ESP32Time rtc(0);  
 
 AsyncWebServer server(80);
+#ifdef MQTT_ENABLE
+WiFiClient client;
+#endif
 const char* PARAM_MESSAGE = "message";
 
 
@@ -183,12 +188,11 @@ Ipwm=0.00 I=0.00+0.00+0.00+ Isum=0.00
 Next Polling in :26sec
 
 */
-static uint32_t ABL_PollTime_old = 0;
-static uint32_t ABL_StatusSec_old = 0;
-static uint32_t ABL_kwh_StartTime = 0;
+static unsigned long ABL_PollTime_old = 0;
+static unsigned long ABL_StatusSec_old = 0;
+static unsigned long ABL_kwh_StartTime = 0;
 static uint64_t ABL_Wh_Sum_akt = 0;
 static uint64_t ABL_Wh_Sum_old = 0;
-//static unsigned long ABL_pollPeriod = 30000;    // jetz über Config Polling period
 
 // VALUES from ABL
 // jetzt über Config
@@ -213,9 +217,19 @@ static String ABL_sChargeTime = "--:--:--";
 static uint16_t SYS_RestartCount = 0;
 static uint16_t SYS_TimeoutCount = 0;
 static uint SYS_ChargeCount = 0;
-static String SYS_Version = "V 1.2.2";
+static String SYS_Version = "V 1.3.0";
 static String SYS_CompileTime =  __DATE__;
 static String SYS_IP = "0.0.0.0";
+
+
+#ifdef MQTT_ENABLE
+#define MQTT_PAYLOAD_SIZE 256      // maximum MQTT message size
+#define HOSTNAME_SIZE 30      // maximum hostname size
+#define STATUS_INTERVAL 10000 // MQTT status message interval [ms]
+#define DATA_INTERVAL   20000 // MQTT data message interval [ms]
+const char MQTT_CLIENTID[] = "ABL";
+#endif
+     
 
 
 static long int HexString2int(String s)
@@ -316,6 +330,7 @@ class ABL_FileVarStore : public FileVarStore
    uint32_t varABL_i_logtime_ms  = 2000;
    uint16_t varABL_i_Watt_16A;
    uint16_t varABL_i_Watt_12A;
+   uint16_t varABL_i_Watt_10A;
    uint16_t varABL_i_Watt_08A;
    uint16_t varABL_i_Watt_06A;
 
@@ -324,6 +339,16 @@ class ABL_FileVarStore : public FileVarStore
    String varWIFI_s_Password= "mypassword";
    String varWIFI_s_SSID    = "myssid";
 
+#ifdef MQTT_ENABLE
+  uint16_t varMQTT_i_PORT = 1883; 
+  String varMQTT_s_HOST = "192.168.2.22";
+  String varMQTT_s_USER = "";
+  String varMQTT_s_PASS = "";
+  String varMQTT_s_TOPIC_OUT   = "abl/out/";
+  String varMQTT_s_PAYLOAD_OUT ="{\"status\":%s, \"ipm\":%d, \"kw\":%d, \"kwh\":%d, \"whsum\":%d}"; // change to whatever you want !
+  String varMQTT_s_TOPIC_IN    ="abl/in/"; // requested payload: {"imax":<value>}  e.g. {"imax:12}
+#endif
+     
 
  protected:
    void GetVariables()
@@ -338,10 +363,21 @@ class ABL_FileVarStore : public FileVarStore
      varABL_i_A_soll_high = GetVarInt(GETVARNAME(varABL_i_A_soll_high),16);
      varABL_i_Scantime_ms = GetVarInt(GETVARNAME(varABL_i_Scantime_ms),30000);  
 
-     varABL_i_Watt_16A    = GetVarInt(GETVARNAME(varABL_i_Watt_16A),(225*2*16));
-     varABL_i_Watt_12A    = GetVarInt(GETVARNAME(varABL_i_Watt_12A),(225*2*12));
-     varABL_i_Watt_08A    = GetVarInt(GETVARNAME(varABL_i_Watt_08A),(225*2*8));
-     varABL_i_Watt_06A    = GetVarInt(GETVARNAME(varABL_i_Watt_06A),(225*2*6));
+     varABL_i_Watt_16A    = GetVarInt(GETVARNAME(varABL_i_Watt_16A),(230*2*16));
+     varABL_i_Watt_12A    = GetVarInt(GETVARNAME(varABL_i_Watt_12A),(230*2*12));
+     varABL_i_Watt_10A    = GetVarInt(GETVARNAME(varABL_i_Watt_10A),(230*2*10));
+     varABL_i_Watt_08A    = GetVarInt(GETVARNAME(varABL_i_Watt_08A),(230*2*8));
+     varABL_i_Watt_06A    = GetVarInt(GETVARNAME(varABL_i_Watt_06A),(230*2*6));
+#ifdef MQTT_ENABLE
+     varMQTT_i_PORT       = GetVarInt(GETVARNAME(varMQTT_i_PORT),1883);
+     varMQTT_s_HOST       = GetVarString(GETVARNAME(varMQTT_s_HOST)); 
+     varMQTT_s_USER       = GetVarString(GETVARNAME(varMQTT_s_USER)); 
+     varMQTT_s_PASS       = GetVarString(GETVARNAME(varMQTT_s_PASS));
+     varMQTT_s_TOPIC_OUT  = GetVarString(GETVARNAME(varMQTT_s_TOPIC_OUT));
+     varMQTT_s_PAYLOAD_OUT= GetVarString(GETVARNAME(varMQTT_s_PAYLOAD_OUT));
+     varMQTT_s_TOPIC_IN   = GetVarString(GETVARNAME(varMQTT_s_TOPIC_IN));
+#endif  
+
    }
 };
 ABL_FileVarStore varStore;
@@ -351,6 +387,8 @@ void initFileVarStore()
   varStore.Load();
 }
 
+
+
 /// @brief do not wait for next polling periode
 static void forcePolling()
 {
@@ -358,6 +396,76 @@ static void forcePolling()
 }
 
  
+#ifdef MQTT_ENABLE
+// Generate MQTT client instance
+// N.B.: Default message buffer size is too small!
+MQTTClient mqttclient(MQTT_PAYLOAD_SIZE);
+
+void mqtt_messageReceived(String &topic, String &payload) 
+{
+  // Note: Do not use the client in the callback to publish, subscribe or
+  // unsubscribe as it may cause deadlocks when other things arrive while
+  // sending and receiving acknowledgments. Instead, change a global variable,
+  // or push to a queue and handle it in the loop after calling `client.loop()`.
+   debug_println("* MQTT: incoming: " + topic + " - " + payload);
+   
+   uint a = payload.substring(8,9).toInt();
+   AsyncWebLog.println("MQTT SET-Imax:" + String(a)+ "A");
+   if ((a >=6 && a <=16) || (a==0))
+   {
+      forcePolling();
+      ABL_tx_Icmax = a;
+      ABL_tx_status = SET_Current; // next Send Protocol
+   }
+   else
+   {
+      AsyncWebLog.println("**ERROR Imax out of range!");
+   }
+  ABL_tx_Icmax = payload.toInt();
+}
+
+
+/// @brief setup MQTT-client
+void mqtt_setup()
+{
+  debug_println("* MQTT: connecting... ");
+  mqttclient.begin(varStore.varMQTT_s_HOST.c_str(), varStore.varMQTT_i_PORT, client);
+  mqttclient.onMessage(mqtt_messageReceived);
+  while (!mqttclient.connect(MQTT_CLIENTID, varStore.varMQTT_s_USER.c_str(), varStore.varMQTT_s_PASS.c_str()))
+  {
+        Serial.print(".");
+        delay(1000);
+  }
+  debug_println("* MQTT: connected!");
+
+  debug_printf("* MQTT suscribe %s\r\n", varStore.varMQTT_s_TOPIC_IN);
+  mqttclient.subscribe(varStore.varMQTT_s_TOPIC_IN);
+}
+
+/// @brief  MQTT run in loop()
+inline void mqtt_loop()
+{
+    mqttclient.loop();
+    delay(10);  // <- fixes some issues with WiFi stability
+
+    if (!mqttclient.connected()) 
+    {
+      mqtt_setup();
+    }
+    char str[80] = {};
+    // cheat: '%' in config.txt is replaces with '&' because web-edit does not allow % in string.  (varStore 'GetVarString' function does replace)
+    // in config.txt:  varMQTT_s_PAYLOAD_OUT  ={"status":"&s", "ipm":&d, "w":&d, "wh":&d, "whsum":&d};
+    // result -->                          str={"status":"%s", "ipm":%d, "w":%d, "wh":%d, "whsum":%d}
+    // change if you want an other output !
+    // ... or add more single publish messages for DOMOTICZ
+    sprintf(str, varStore.varMQTT_s_PAYLOAD_OUT.c_str(), ABL_rx_status, ABL_rx_Ipwm, (int)(ABL_rx_kW*1000.0), (int)ABL_rx_Wh, (int)ABL_Wh_Sum_akt);
+    debug_printf("* MQTT Topic_out:%s Payload:%s\r\n", varStore.varMQTT_s_TOPIC_OUT, str);
+    mqttclient.publish(varStore.varMQTT_s_TOPIC_OUT, str);
+   
+}
+#endif // MQTT
+         
+
 /// @brief ABL Rx-Timeout after 2 polling periodes
 bool testTimeount()
 {
@@ -495,7 +603,13 @@ void calculate_kWh()
       ABL_rx_Isum = 0;
       ABL_rx_kW = 0;
     }
-  
+    else
+    // End of Charging  by JG 24.3.2024 set kw=0 at
+    if (ABL_rx_status.startsWith("B"))
+    {
+      ABL_rx_kW = 0;
+    }
+    else 
     if (ABL_rx_status.startsWith("A"))
     {
       saveHistory();
@@ -521,6 +635,10 @@ void calculate_kWh()
             ABL_rx_kW = varStore.varABL_i_Watt_08A / 1000.0;
            break; 
 
+          case 10:
+            ABL_rx_kW = varStore.varABL_i_Watt_10A / 1000.0;
+            break;  
+
            case 12:
             ABL_rx_kW = varStore.varABL_i_Watt_12A / 1000.0;
            break;
@@ -530,7 +648,7 @@ void calculate_kWh()
            break;
 
            default: // use standard for all other values ... or... expand your code ;-)
-            ABL_rx_kW = (225*2*ABL_rx_Ipwm) / 1000.0;
+            ABL_rx_kW = (230*2*ABL_rx_Ipwm) / 1000.0;
            break;
            }
       }
@@ -548,7 +666,6 @@ void calculate_kWh()
     
   } 
 }
-
 
 
 /// @brief Init ABL communication over RS485
@@ -979,6 +1096,12 @@ String setHtmlVar(const String& var)
             "\nIpwm       :" + String(ABL_rx_Ipwm) + 
             "\nStatus     :" + ABL_rx_status;
   }
+  else
+  if (var == "IMAX")
+  {
+     return String(ABL_tx_Icmax);
+  }
+     
 
   return String();
 }
@@ -1312,6 +1435,9 @@ void setup()
   initWifi();
 #endif
   delay(200);
+#ifdef MQTT_ENABLE
+  mqtt_setup();
+#endif  
   initWebServer();
   ABL_init();
   delay(400);
@@ -1321,8 +1447,8 @@ void setup()
 
 
 static time_t charge_time;
-static uint log_timer =0;
-static uint32_t tmp_poll_time_ms = 0;
+static unsigned long log_timer =0;
+static unsigned long tmp_poll_time_ms = 0;
 static unsigned long now = 0;
 static String s;
 void loop()
@@ -1371,5 +1497,9 @@ void loop()
       handleWifiConnection();
 #endif
     }
+
+#ifdef MQTT_ENABLE
+    mqtt_loop();
+#endif              
 }
 

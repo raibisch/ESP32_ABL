@@ -22,4 +22,22 @@ varABL_i_U_netz = 230;
 ;measured for ID.3 pure 2phase
 varABL_i_Watt_16A= 7125; 
 varABL_i_Watt_12A= 5430;
+varABL_i_Watt_10A= 4600;
 varABL_i_Watt_08A= 2553;
+
+;1-pase 
+;varABL_i_Watt_16A= 3680;
+;varABL_i_Watt_12A= 2760;
+;varABL_i_Watt_10A= 2300;
+;varABL_i_Watt_06A= 1380;
+
+;for Version compiled with MQTT_ENABLE
+;=====================================
+varMQTT_i_PORT =1883; 
+varMQTT_s_HOST =192.168.2.22;
+varMQTT_s_USER =;  
+varMQTT_s_PASS_=; 
+varMQTT_s_TOPIC_OUT    =abl/out/;
+varMQTT_s_PAYLOAD_OUT  ={"status":"&s", "ipm":&d, "w":&d, "wh":&d, "whsum":&d};
+varMQTT_s_TOPIC_IN     =abl/in/;
+               

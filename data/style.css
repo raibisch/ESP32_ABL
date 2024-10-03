@@ -5,6 +5,7 @@ html {
   text-align: center;
   font-size:0.8rem;
   min-width:320px;
+  place-items: center;
 }
 h1{color: blue;padding: 15px;}
 h3{color:blue;padding:10px;}
@@ -13,7 +14,7 @@ body{ font-weight: bold;}
 .button, .buttonblue, .buttongreen, .buttonred, .buttonyellow, .buttonlink { 
   display: inline-block;
   width: 75%;
-  max-width: 300px;
+  max-width: 320px;
   padding: 15px 20px;
   border: none;
   border-radius: 10px;
@@ -23,20 +24,75 @@ body{ font-weight: bold;}
   cursor: pointer;
 }
 
+/* style range */
+input[type=range] {
+  width: 100%;
+  margin-left: 0;
+}
+
+/* style datalist */
+input[type=range] + datalist {
+  display: flex;
+  margin-top: -4px;
+ font-size: medium;
+ text-align: center;
+}
+input[type=range] + datalist option {
+  display: inline-block;
+  width: calc((100% - 12px) / (var(--list-length) - 1));
+ 
+}
+input[type=range] + datalist option:first-child {
+
+  width: calc((100% - 12px) / ((var(--list-length) - 1) * 2) + 6px);
+}
+input[type=range] + datalist option:last-child {
+
+  width: calc((100% - 12px) / ((var(--list-length) - 1) * 2) + 6px);
+  text-align: right;
+}
+
+.slider {
+  appearance: none;
+  height: 25px;
+  background: #092195;
+  outline: none;
+  opacity: 0.7;
+  -webkit-transition: .2s;
+  transition: opacity .2s;
+}
+
+.slider:hover {
+  opacity: 1;
+}
+
+.slider::-webkit-slider-thumb {
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  background: white;
+  cursor: pointer;
+}
+
+.slider::-moz-range-thumb {
+  appearance: none;
+  width: 25px;
+  height: 25px;
+  background: white;
+  cursor: pointer;
+}
+
 .buttongreen {
   background-color: darkgreen;
- 
 }
 
 .buttonred {
   background-color: #f10b0b;
 }
 
-
 .buttonblue {
   background-color: #36afbf;
 }
-
 
 .buttonyellow {
   background-color: #f1d104;
