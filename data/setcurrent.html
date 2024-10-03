@@ -43,6 +43,17 @@
 
             const input = document.getElementById('pwmSlider');
             output = document.getElementById('textSliderValue');
+          
+            const delay = millis => new Promise((resolve, reject) => 
+            {
+              setTimeout(_ => resolve(), millis)
+            });
+
+            const gotohome = async function() 
+            {
+             await delay(2000);
+             window.location.href = 'index.html';
+            }
 
             input.onchange = function()
             {
@@ -52,19 +63,8 @@
                 var xhr = new XMLHttpRequest();
                 xhr.open("GET", "/fetch?imax="+sliderValue, true);
                 xhr.send();
-                window.location.href = 'index.html';
+                gotohome();
             };
-            //input.onchange();
-
-           /*
-           input.oninput = function() {
-              output.innerHTML = values[this.value];
-           };
-
-           // set the default value
-           input.oninput();
-           */
-            
          </script>
     </body>
 
