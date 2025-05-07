@@ -54,6 +54,23 @@ Receive:
 decoded:
 `<Imax [A]>,<aktual Power [kW]>,<Status>,<aktual Work [kW/h]>,<Sum Work [W/h]>,<charge-time>`
 
+### Fetch actual Values and State in key=value pair
+
+This includes the "Status" as an Integer Value, too.
+
+`http:<your-ip>/fetchkv`
+
+Receive:
+```
+Imax=16 A 
+ActPower=11 kW
+Status=C2
+IntStatus=194
+ActWork=0.92 kW/h
+SumWork=2926 W/h
+ChargeTime=00:15:02
+```
+
 ### Set value Imax
 
 `http:<your-ip>/fetch?imax=xx` (xx= 6,8,10,12,14,16)

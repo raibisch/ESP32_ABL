@@ -1008,6 +1008,13 @@ static String readString(File s)
   return ret;
 }
 
+int getIntStatus()
+{
+   long intValue = strtol(ABL_rx_status.c_str(), NULL, 16);
+   return intValue;
+}
+
+
 // -------------------- WEBSERVER ----------------------------------------------
 // -----------------------------------------------------------------------------
 //
@@ -1251,6 +1258,19 @@ void initWebServer()
     String s = String(ABL_rx_Ipwm)+',' + String(ABL_rx_kW) + ','+ ABL_rx_status+ ',' + String(ABL_rx_Wh/1000.0) + ',' + String(ABL_Wh_Sum_akt) + ',' +String(ABL_sChargeTime);
     request->send(200, "text/plain", s);
     //debug_println("server.on /fetch: "+ s);
+  });
+
+  // fetch GET
+  server.on("/fetchkv", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+    String s = "Imax=" + String(ABL_rx_Ipwm) + " A \n" + 
+               "ActPower=" + String(ABL_rx_kW) + " kW\n" +
+               "Status=" + String(ABL_rx_status) + "\n" +
+               "IntStatus=" + String(getIntStatus()) + "\n" +
+               "ActWork=" + String(ABL_rx_Wh/1000.0) + " kW/h\n" +
+               "SumWork=" + String(ABL_Wh_Sum_akt) + " W/h\n" +
+               "ChargeTime=" + String(ABL_sChargeTime) + "\n";
+    request->send(200, "text/plain", s);
   });
 
   // config.txt GET
