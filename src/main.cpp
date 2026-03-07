@@ -188,7 +188,8 @@ Ipwm=0.00 I=0.00+0.00+0.00+ Isum=0.00
 Next Polling in :26sec
 
 */
-static unsigned long ABL_PollTime_old = 0;
+
+static unsigned long ABL_PollTime_old =  0;
 static unsigned long ABL_StatusSec_old = 0;
 static unsigned long ABL_kwh_StartTime = 0;
 static uint64_t ABL_Wh_Sum_akt = 0;
@@ -327,7 +328,7 @@ class ABL_FileVarStore : public FileVarStore
    uint16_t varABL_i_A_soll_low  = 6;
    uint16_t varABL_i_U_netz = 230;
    uint32_t varABL_i_Scantime_ms = 30000;
-   uint32_t varABL_i_logtime_ms  = 2000;
+   uint32_t varABL_i_logtime_ms  = 1000;
    uint16_t varABL_i_Watt_16A;
    uint16_t varABL_i_Watt_12A;
    uint16_t varABL_i_Watt_10A;
@@ -392,7 +393,7 @@ void initFileVarStore()
 /// @brief do not wait for next polling periode
 static void forcePolling()
 {
-      ABL_PollTime_old  = millis() + varStore.varABL_i_Scantime_ms;
+      ABL_PollTime_old  = 0;
 }
 
  
@@ -985,15 +986,11 @@ void handleWifiConnection()
     // Test if wifi is lost from router
     if ((varStore.varWIFI_s_Mode == "STA") && (WiFi.status() != WL_CONNECTED))
     {
-        debug_println("Reconnecting to WiFi...");
-        delay(100);
-        if (!WiFi.reconnect())
-        {
-            saveHistory();
-            hist.putInt("restart",SYS_RestartCount++);
-            delay(200);
-            ESP.restart();
-        } 
+        delay(1000);
+        //saveHistory();
+        hist.putInt("restart",SYS_RestartCount++);
+        delay(200);
+        ESP.restart();
     }
 }
 
@@ -1153,7 +1150,7 @@ void Handle_Index_Post(AsyncWebServerRequest *request)
     }
 
    AsyncWebLog.println("SET-Current:" + String(ABL_tx_Icmax) + "A");
-   
+   forcePolling();
    request->send(SPIFFS, "/index.html", String(), false, setHtmlVar);
 }
 
@@ -1467,23 +1464,21 @@ void setup()
 
 
 static time_t charge_time;
-static unsigned long log_timer =0;
-static unsigned long tmp_poll_time_ms = 0;
-static unsigned long now = 0;
+static int log_timer = 0;
+static unsigned long tmp_poll_time_ms = 10000;
 static String s;
 void loop()
 {
-    now = millis();
+    //unsigned long now = millis();
   
     if (ABL_rx_status.startsWith("C"))
     { tmp_poll_time_ms = 10000;}  // while charging 10sec polling.
     else
     { tmp_poll_time_ms = varStore.varABL_i_Scantime_ms;} // value > 30sec reduces standby power 
 
-
-    if ((now - ABL_PollTime_old) >= tmp_poll_time_ms)
+    if (millis() - tmp_poll_time_ms > ABL_PollTime_old)
     {
-       ABL_PollTime_old  = now;
+       ABL_PollTime_old  = millis();
        log_timer = tmp_poll_time_ms / 1000;
        setLED(1);
        ABL_Send(ABL_tx_status);
@@ -1495,12 +1490,12 @@ void loop()
     }
 
 
-    if ((now -ABL_StatusSec_old) >= varStore.varABL_i_logtime_ms)
-    {
-      ABL_StatusSec_old = now;
-      log_timer = log_timer - (varStore.varABL_i_logtime_ms/1000);
-      calculate_kWh();
 
+    if (millis() - varStore.varABL_i_logtime_ms > ABL_StatusSec_old)
+    {
+      ABL_StatusSec_old = millis();
+      log_timer--;
+      calculate_kWh();
       if (ABL_rx_status.startsWith("C"))
       { 
         s = ABL_sChargeTime + " Wh-akt:" + ABL_rx_Wh + " next Tx in:" + log_timer + "sec";
