@@ -1257,6 +1257,22 @@ void initWebServer()
     //debug_println("server.on /fetch: "+ s);
   });
 
+
+   // fetch GET
+  server.on("/fetchjson", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+    // return actual values
+    // REMARK: if you change Imax it needs one more GET to return the actual value of Imax
+    String s = "{\"ipwm\": "      + String(ABL_rx_Ipwm)+ ", "+ 
+                 "\"kw\": "       + String(ABL_rx_kW)  + ", "+ 
+                 "\"status\": \"" + ABL_rx_status      + "\", "+ 
+                 "\"wh\": "       + String(ABL_rx_Wh/1000.0) + ", " + 
+                 "\"whsum\": "    + String(ABL_Wh_Sum_akt)   + ", " + 
+                 "\"ctime\": \""  + String(ABL_sChargeTime) + "\"}\r\n";
+    request->send(200, "text/json", s);
+    //debug_println("server.on /fetch: "+ s);
+  });
+
   // fetch GET
   server.on("/fetchkv", HTTP_GET, [](AsyncWebServerRequest *request)
   {
@@ -1270,6 +1286,8 @@ void initWebServer()
     request->send(200, "text/plain", s);
   });
 
+
+    
   // config.txt GET
   server.on("/config.txt", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(SPIFFS, "/config.txt", "text/html", false);
@@ -1469,8 +1487,6 @@ static unsigned long tmp_poll_time_ms = 10000;
 static String s;
 void loop()
 {
-    //unsigned long now = millis();
-  
     if (ABL_rx_status.startsWith("C"))
     { tmp_poll_time_ms = 10000;}  // while charging 10sec polling.
     else
