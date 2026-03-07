@@ -1489,8 +1489,6 @@ void loop()
         serialEventABL();
     }
 
-
-
     if (millis() - varStore.varABL_i_logtime_ms > ABL_StatusSec_old)
     {
       ABL_StatusSec_old = millis();
