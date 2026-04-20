@@ -11,6 +11,7 @@
 [platformio]
 default_envs = lolin_s2_mini
 #default_envs = esp32-poe
+#default_envs = esp32
 
 [common]
 monitor_speed = 115200
@@ -19,18 +20,6 @@ lib_deps_external =
 	https://github.com/fbiego/ESP32Time.git
 	256dpi/MQTT
 
-[env:m5Atom]
-platform = espressif32
-framework = arduino
-board = m5stack-core-esp32
-monitor_speed = ${common.monitor_speed}
-upload_port = /dev/ttyUSB0
-lib_deps = 
-	${common.lib_deps_external}
-	esphome/ESPAsyncWebServer-esphome@^3.1.0
-build_flags = 
-	-DDEBUG_PRINT=1
-	
 
 [env:lolin_s2_mini]
 #platform = espressif32
@@ -43,7 +32,8 @@ monitor_port = /dev/ttyACM0
 board_upload.use_1200bps_touch = yes
 board_upload.wait_for_upload_port = yes
 board_upload.require_upload_port = yes
-build_unflags = -DARDUINO_USB_MODE
+build_unflags=
+    -DARDUINO_USB_CDC_ON_BOOT
 build_flags = 
     -DABL_RXD_GPIO=39
 	-DABL_TXT_GPIO=37
@@ -52,7 +42,7 @@ build_flags =
 	-DARDUINO_USB_MODE=0
 	-DARDUINO_USB_CDC_ON_BOOT=1
 	-DDEF_S2_MINI=1
-	-DDEBUG_PRINT=1
+	#-DDEBUG_PRINT=1
 	-DDEBUG_WITHOUT_ABL=1
 	#-DMQTT_ENABLE=1
 lib_deps = 
@@ -75,12 +65,33 @@ build_flags =
 	-DABL_TXT_GPIO=33
 	-DABL_RX_LOW_ENABLE_GPIO=32
 	-DUSE_ETH_INSTEAD_WIFI=1
-	-DARDUINO_USB_MODE=0
-	-DARDUINO_USB_CDC_ON_BOOT=0
 	-DWITHOUT_TEMP=1
 	-DWITHOUT_LED=1
 	-DDEBUG_PRINT=1
-	#-DDEBUG_WITHOUT_ABL=1
+	-DDEBUG_WITHOUT_ABL=1
 lib_deps = 
 	${common.lib_deps_external}
+
+
+
+[env:esp32]
+# platform = espressif32 
+#platform = https://github.com/pioarduino/platform-espressif32.git
+platform = espressif32@ 6.0.1
+board = esp32dev
+framework = arduino
+monitor_speed = 115200
+build_flags = 
+    -DWITHOUT_TEMP=1
+	-DLED_GPIO=2
+    -DABL_RXD_GPIO=35
+	-DABL_TXT_GPIO=33
+	-DABL_RX_LOW_ENABLE_GPIO=32
+    -DDEBUG_PRINT=1
+	-DDEBUG_WITHOUT_ABL=1
+lib_deps =
+	${common.lib_deps_external}
+extra_scripts = post_build.py
+
+
 

@@ -60,7 +60,9 @@
 
 /*
 Set I-Soll:
-=======
+===========
+all values are hardcoded with Checksum !
+
 6A:
 :01100014000102006474
 
@@ -115,6 +117,7 @@ AsyncWebServer server(80);
 WiFiClient client;
 #endif
 const char* PARAM_MESSAGE = "message";
+bool bInitFileOK = false;
 
 
 enum ABL_POLL_STATUS {
@@ -137,7 +140,8 @@ ABL_C2,       // connected, EV in charging
 ABL_C3,       // connected, EV in charging reduced current
 ABL_C4,       // connected, EV in charging reduced current
 ABL_UNVALID,  // 
-ABL_TIMEOUT   // no Rx after 2x Polltimes
+ABL_TIMEOUT,   // no Rx after 2x Polltimes
+ABL_PAUSE 
 };
 
 const String ABL_STATUS_STRING[] = { 
@@ -149,7 +153,8 @@ const String ABL_STATUS_STRING[] = {
 "C3",     // connected, EV in charging reduced current
 "C4",     // connected, EV in charging reduced current
 "??",     // unvalid
-"noCom"   // timeout or no connection
+"noCom",   // timeout or no connection
+"pause"
 };
 
 /*
@@ -207,6 +212,9 @@ static uint64_t ABL_rx_Wh = 0; // calculated value in Wh *NOT* kWh
 static String ABL_rx_status = ABL_STATUS_STRING[ABL_UNVALID];
 static String ABL_rx_status_old = "---";
 static bool ABL_rx_aktiv = 0;
+
+//new: 9.3.2026
+bool ABL_PauseFlag = false;
 
 static enum ABL_POLL_STATUS ABL_tx_status = POLL_Current;
 // Values to ABL
@@ -383,9 +391,9 @@ class ABL_FileVarStore : public FileVarStore
 };
 ABL_FileVarStore varStore;
 
-void initFileVarStore()
+bool initFileVarStore()
 {
-  varStore.Load();
+  return varStore.Load();
 }
 
 
@@ -478,6 +486,10 @@ bool testTimeount()
         //ABL_rx_Ipwm = 16;
         ABL_rx_Ipwm = 10;
         debug_printf("ABL_rx_timeoutcount:%d\r\n", ABL_rx_timeoutcount);
+
+        AsyncWebLog.println("ABL_rx_timeoutcount:");
+        AsyncWebLog.println(String(ABL_rx_timeoutcount));
+        
         if (ABL_rx_timeoutcount < 2)
         {
           ABL_rx_status = ABL_STATUS_STRING[ABL_A1];
@@ -587,7 +599,6 @@ void calculate_kWh()
 
    if (ABL_rx_status_old != ABL_rx_status) // Status is changing
    {
-
     // end charging
     if (ABL_rx_status_old.startsWith("C"))
     {
@@ -702,9 +713,11 @@ void ABL_Send(ABL_POLL_STATUS s)
   break;
 
   case SET_Current:
+    ABL_PauseFlag = false;
     switch (ABL_tx_Icmax)
     {
       case 0:
+        ABL_PauseFlag = true;
         tx = String(ABL_TX_SET_DISABLE);
       break;
       
@@ -925,17 +938,17 @@ void handleEthernetConnection()
 //////////////////////////////////////////
 /// @brief Init Wifi
 /////////////////////////////////////////
-void initWifi()
+void initWifi(bool bSetAP)
 {
   // Test mit AP !!!!!!!!!!!!!!!!!!!!!
   //varStore.varWIFI_s_Mode="AP";
   // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
   // API Info: https://docs.espressif.com/projects/esp-idf/en/v4.4.6/esp32/api-reference/network/esp_wifi.html
-   if (varStore.varWIFI_s_Mode == "AP")
+   if (bSetAP || (varStore.varWIFI_s_Mode == "AP"))
    {
     delay(100);
     debug_println("INFO-WIFI:AP-Mode");
-    WiFi.softAP(varStore.varDEVICE_s_Name.c_str());   
+    WiFi.softAP("ESP_ABL_AP");   
     debug_print("IP Address: ");
     SYS_IP = WiFi.softAPIP().toString();
     debug_println(SYS_IP);
@@ -1157,10 +1170,32 @@ void Handle_Index_Post(AsyncWebServerRequest *request)
 void initWebServer()
 { 
   debug_print("Init web server...\n");
-  //Route for root / web page
+    //Route for root / web page
   server.on("/",          HTTP_GET, [](AsyncWebServerRequest *request)
   {
-   request->send(SPIFFS, "/index.html", String(), false, setHtmlVar);
+    if (bInitFileOK) 
+    { 
+      request->send(SPIFFS, "/index.html", String(), false, setHtmlVar);
+    }
+    else
+    { // "rescue page" for first run without valid Wifi-credentials or no valid data-system
+      request->redirect("/ota_ap.html");
+      //request->send(202, "text/plain", "goto: http://192.168.4.1/ota_ap.html");
+    }
+  });
+
+   
+  // Notfall Website 'ota_ap.html' für Software-Upload
+  static const char* staticOTA_site PROGMEM = R"(
+<!DOCTYPE HTML><html lang="de"><head>
+<title>OTA-Update</title><meta charset="UTF-8"></head>
+<body><form method='POST' action='/ota_update' enctype='multipart/form-data'></p><div>Select a file 'myFS.bin' (myFS-Data) or 'firmware.bin' (Program)</div><input class='container' type='file' name='update' accept='.bin'><input type='submit' name="startupdate" value='START-UPLOAD'><BR></form>
+</p><a class="buttonlink" href="reboot.html">REBOOT!</a>
+</body></html>
+)";
+  server.on("/ota_ap.html", HTTP_GET, [](AsyncWebServerRequest *request)
+  {
+    request->send(200, "text/html", staticOTA_site);
   });
 
 
@@ -1249,7 +1284,11 @@ void initWebServer()
        }
     }
     }
-
+    
+    if (ABL_PauseFlag)
+    {
+      ABL_rx_status = ABL_STATUS_STRING[ABL_PAUSE];
+    }
     // return actual values
     // REMARK: if you change Imax it needs one more GET to return the actual value of Imax
     String s = String(ABL_rx_Ipwm)+',' + String(ABL_rx_kW) + ','+ ABL_rx_status+ ',' + String(ABL_rx_Wh/1000.0) + ',' + String(ABL_Wh_Sum_akt) + ',' +String(ABL_sChargeTime);
@@ -1467,7 +1506,7 @@ void setup()
 #ifdef USE_ETH_INSTEAD_WIFI
   initEthernet();
 #else
-  initWifi();
+  initWifi(!bInitFileOK);
 #endif
   delay(200);
 #ifdef MQTT_ENABLE
@@ -1481,10 +1520,12 @@ void setup()
 }
 
 
-static time_t charge_time;
-static int log_timer = 0;
-static unsigned long tmp_poll_time_ms = 10000;
-static String s;
+time_t charge_time;
+int log_timer = 0;
+unsigned long tmp_poll_time_ms = 10000;
+String s;
+int iBlink;
+
 void loop()
 {
     if (ABL_rx_status.startsWith("C"))
@@ -1496,7 +1537,7 @@ void loop()
     {
        ABL_PollTime_old  = millis();
        log_timer = tmp_poll_time_ms / 1000;
-       setLED(1);
+       //setLED(1);
        ABL_Send(ABL_tx_status);
        testTimeount(); 
     }
@@ -1507,6 +1548,8 @@ void loop()
 
     if (millis() - varStore.varABL_i_logtime_ms > ABL_StatusSec_old)
     {
+      setLED(iBlink%2);
+      iBlink++;
       ABL_StatusSec_old = millis();
       log_timer--;
       calculate_kWh();

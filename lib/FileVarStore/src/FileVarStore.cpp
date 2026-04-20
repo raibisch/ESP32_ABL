@@ -34,7 +34,7 @@ bool FileVarStore::Load()
 
   size_t size = configFile.size();
   debug_printf("size of config.txt:%d \n", size);
-  if (size > 1024) {
+  if (size > 2000) {
     debug_println("Config file size is too large");
     _isLoaded = false;
     return false;

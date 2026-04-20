@@ -7,10 +7,13 @@
    <meta charset="UTF-8">
 </head>
 <body>
+<div class="outer_frame">
    <!-- Formular zum Editieren und Speichern der Einstellungsdaten -->
    <!-- siehe:   https://ullisroboterseite.de/projekte-haus-wetter-config.html   -->
   <form action="log.html" method="POST">
      <p>Event-Log:</p>
+     <label for="logfilter">Filter:</label>
+     <input type="text" id="logfilter" name="logfilter"><br>
      <textarea autocorrect="off" id="logtext"></textarea>
   </form>
   </p>
@@ -21,11 +24,12 @@
   <!--
   <a class="buttonlink" href="setup.html">back</a>
   -->
-
+</div>
+<div class="outer_frame">
   <button type="button" class="image-btn" onclick="window.location.href='index.html'"><img src="home.png">Home</button>
   <button style="width: 100px;" type="button" class="image-btn" > </button>
   <button type="button" class="image-btn" onclick="window.location.href='setup.html'"><img src="settings.png">Setup</button>
-  
+</div>
 <script>
   var stopscroll=false;
   
@@ -48,6 +52,7 @@
       document.getElementById("logtext").scrollTop =  document.getElementById("logtext").scrollHeight;
     }
   }
+
  
   if (!!window.EventSource) 
   {
@@ -69,9 +74,18 @@
  
    source.addEventListener('logprint', function(e) {
      //console.log("logprint", e.data);
-     addText(e.data);
+     let filterText = String(document.getElementById("logfilter").value);
+     let logText    = String(e.data);
+     if ((filterText.length == 0) || (logText.includes(filterText)))
+     {
+       addText(logText);
+     }
+
+
+     //addText(e.data);
    }, false);
   }
+
  </script>
 </body>
 </html>
