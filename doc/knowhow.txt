@@ -116,11 +116,14 @@ Quelle: https://www.goingelectric.de/forum/viewtopic.php?p=1550459#
 
 LRC-Berechnung
 ============
-Bei allen Befehlen muss das abschliessende LRC Byte hinzugefÃŒgt werden.
-Ein Online Rechner ist hier.
 
-Dazu muss man dort die Option Hex auswählen und dann den Befehl ohne Doppelpunkt z.B. aus der Abfrage der Firmware, hier also 010300010002 einfügen.
-Dann erhält man unter Calculation result (Hex) den gewuenschten Wert. Diese haengt man an den Befehl.
+Firmware lt. ABL Software 5.0 (Nennstrom 16A)
+
+Bei allen Befehlen muss das abschließende LRC Byte hinzugefügt werden.
+Ein Online Rechner ist hier. http://www.metools.info/encoding/ecod127.html
+Dazu muss man dort die Option Hex auswählen und dann den Befehl ohne Doppelpunkt z.B. 
+aus der Abfrage der Firmware, hier also 010300010002 einfügen.
+Dann erhält man unter Calculation result (Hex) den gewünschten Wert. Diese hängt man an den Befehl.
 Hier also :010300010002+F9 also :010300010002F9
 
 ******************************************************
@@ -137,8 +140,8 @@ Ladepunkt resetten (0x0005)
 :01 1000050001025A5A
 
 Ladepunkt sperren (0x0005)
-:01100005000102E0E0
->0110 0005 0001 E9
+:01 10 0005 0001 02E0 E0
+>01 10 0005 0001 E9
 
 Ladepunkt entsperren (0x0005)
 :01100005000102A1A1
@@ -263,11 +266,6 @@ Set I-Soll:
 :0110001400010200A731
 
 11A:                                                                  
-Ergänzungen. Diese setzten ein bisschen Verständnis des Modbus-Protokolls voraus aber das hat fredvomjupiter42 schon gut beschrieben.
-Ich benutze als Register-Adressen die Adressen, wie im Modbus-Protokoll angegeben (1 bis x und nicht 40.001 bis x).
-Alles ohne Gewähr Auf eigene Gefahr!
-Die Daten lassen sich nur auslesen, wenn neben dem richtigen Start-Register auch die richtige Länge angegeben wird.
-Ansonsten ist es mir nicht gelungen Daten zu lesen
 :0110001400010200B721
 
 12A:
@@ -287,3 +285,75 @@ Ansonsten ist es mir nicht gelungen Daten zu lesen
 
 
 
+******************************************************
+Abfrage Firmware (0x0001)
+:010300010002 
+>0103 04 014150BE A8
+******************************************************
+Ladestatus (0x0004)
+:010300040001
+            Status
+>0103 02 04   A1     55
+******************************************************
+Ladepunkt resetten (0x0005)
+:011000050001025A5A
+
+Ladepunkt sperren (0x0005)
+:01100005000102E0E0
+>0110 0005 0001 E9
+
+Ladepunkt entsperren (0x0005)
+:01100005000102A1A1
+>0110 00 05 0001 E9
+******************************************************
+Status (0x002E)
+:0103002E0005
+
+         Reg0 Reg1 Reg2 Reg3 Reg4
+>0103 0A 2EA1 1064 03E8 03E8 03E8 EE  (A1 warte auf Fahrzeug)
+>0103 0A 2EB2 D064 03E8 03E8 03E8 1D  (B2 connected = true; chargerelease = true; charging = false;) nicht laden)
+>0103 0A 2EC3 D064 03E8 03E8 03E8 0C  (C3 connected = true; chargerelease = true; charging = true;) laden
+>0103 0A 2EE0 1064 03E8 03E8 03E8 AF  (E0 outletlocked = true; ) gesperrt
+>0103 0A 2EC2 9100 0001 0001 0096 D9
+:0103002E0005
+******************************************************
+Strom (0x000F)
+:0103000F0005
+>0103 0A 0F3F 010B 010B 00E9 00E9 BA
+>0103 0A 0F3F 010B 010B 00E9 0000 A3
+******************************************************
+Max. Ladeleistung setzen (0x0014)
+(6A)
+:011000140001020064
+(7A)
+:011000140001020075
+(8A)
+:011000140001020086
+(9A)
+:011000140001020096
+(10A)
+:0110001400010200A7
+(11A)
+:0110001400010200B8
+(12A)
+:0110001400010200C8
+(13A)
+:0110001400010200D9
+(14A)
+:0110001400010200EA
+(15A)
+:0110001400010200FA
+(16A)
+:01100014000102010B
+
+(Laden unterbrechen)
+:0110001400010203E8
+
+******************************************************
+Spannung (0x0015)
+:010300150005
+>0103 0A 15A1 0ADA 0000 0000 0ACB 83
+>0103 0A 15A0 0ADF 0000 0000 0ACD 7D
+******************************************************
+DeviceID abfragen (0x0050)
+:010300500008

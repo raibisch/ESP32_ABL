@@ -47,6 +47,8 @@
     <button type="button" class="image-btn" onclick="window.location.href='log.html'"><img src="file-list.png">Log</button>
     <button type="button" class="image-btn" onclick="window.location.href='setcurrent.html'"><img src="current.png" >Set-Current</button>
     <button type="button" class="image-btn" onclick="window.location.href='setup.html'"><img src="settings.png">Setup</button>
+
+    <button type="button" class="image-btn" onclick="window.location.href='index2.html'"><img src="wb.png">%DEVICEID02%</button>
 </div>        
     <script type="text/javascript">
             //var t = new Date();
@@ -70,21 +72,21 @@
               myStatus = String(myArray[2]);
             
               // example : https://code-boxx.com/change-override-css-with-javascript
-              if (myStatus.includes('A'))
+              if (myStatus.startsWith('A'))
               {
                 document.getElementById('ABL_STATUS').style.color = 'green';
                 //document.getElementById('RING_ID').className = "outerring_blink";
                 document.getElementById('RING_ID').style.background = 'green';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'visible';
               }
-              else if (myStatus.includes('B'))
+              else if (myStatus.startsWith('B'))
               {
                 document.getElementById('ABL_STATUS').style.color = 'Teal'           // gruenblau
                 document.getElementById('RING_ID').style.background = 'Teal';
                 document.getElementById('RING_ID').className = "outerring_blink";
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'visible';
               }
-              else if (myStatus.includes('C'))
+              else if (myStatus.startsWith('C'))
               {
                 document.getElementById('ABL_STATUS').style.color = 'blue';    
                 document.getElementById('RING_ID').style.background = 'blue';
@@ -111,21 +113,20 @@
                 document.getElementById('RING_ID').style.background = 'Fuchsia';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
+              else if (myStatus.startsWith("pau"))
+              {
+                document.getElementById('ABL_STATUS').style.color = 'orange';
+                //document.getElementById('RING_ID').className = "outerring_blink";
+                document.getElementById('RING_ID').style.background = '#ebce14';
+                document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
+              }
               else
               {
                 document.getElementById('ABL_STATUS').style.color = 'black';
                 document.getElementById('RING_ID').className = "outerring_blink";
                 document.getElementById('RING_ID').style.background = 'gray';
+                //document.getElementById("BUTTON_PAUSE").style.visibility= 'visible';
               }
-
-              if (myStatus.startsWith("pau"))
-              {
-                document.getElementById('ABL_STATUS').style.color = 'orange';
-                //document.getElementById('RING_ID').className = "outerring_blink";
-                //document.getElementById('RING_ID').style.background = '#ebce14';
-                document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
-              }
-              
             }
             var oReq = new XMLHttpRequest();
             oReq.addEventListener("load", reqListener);

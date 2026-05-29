@@ -9,7 +9,7 @@
 #define GETVARNAME(Variable) (#Variable)
 
 // now def in platformio.ini
-//#define DEBUG 1    // SET TO 0 OUT TO REMOVE TRACES
+//#define DEBUG_PRINT 1    // SET TO 0 OUT TO REMOVE TRACES
 
 #ifdef DEBUG_PRINT
 #define debug_begin(...) Serial.begin(__VA_ARGS__);
@@ -24,7 +24,6 @@
 #define debug_write(...)
 #define debug_println(...)
 #endif
-
 
 class FileVarStore
 {

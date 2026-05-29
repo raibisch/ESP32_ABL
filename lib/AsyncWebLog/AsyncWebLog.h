@@ -31,7 +31,7 @@
 #endif
 
 // only println for Strings
-#define MINI_WEBLOG
+//#define MINI_WEBLOG
 
 // by JG: point to Webpage in SPIFF
 #define LOG_URL "/log.html"
@@ -67,8 +67,6 @@ public:
 
 
     // Print with New Line
-
-
     void println(const char *m);
 
     void println(char *m);

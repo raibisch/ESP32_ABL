@@ -31,8 +31,15 @@
         <p>Set Hist.-Values (Sum)</p>
         <form action="/setvalues.html" method="post">
           <tr>
-            <th>  <label class="inputtext" for="kwhsum">kW/h</label></th>
+            <th>  <label class="inputtext" for="kwhsum">%DEVICEID% [kW/h]</label></th>
             <th> <input type="number" step="0.001" value="%KWHSUM%" onkeypress="onlyNumberKey(event)"id="kwhsum" name="kwh"></th>
+            <th> <input  type="submit" formmethod="post" value="save"></th>
+          </tr>
+        </form> 
+        <form action="/setvalues.html" method="post">
+          <tr>
+            <th> <label class="inputtext" for="kwhsum02">%DEVICEID02% [kW/h]</label></th>
+            <th> <input type="number" step="0.001" value="%KWHSUM02%" onkeypress="onlyNumberKey(event)"id="kwhsum02" name="kwh02"></th>
             <th> <input  type="submit" formmethod="post" value="save"></th>
           </tr>
         </form> 
@@ -42,12 +49,11 @@
       
   </div>
   <p></p>
-  
-  <button type="button" class="image-btn" onclick="window.location.href='index.html'"><img src="home.png">Home</button>
-  <button style="width: 100px;" type="button" class="image-btn" > </button>
+  <button type="button" class="image-btn" onclick="history.back()"><img src="home.png"></button>
+  <!--
+  <button type="button" class="image-btn" onclick="window.location.href='index2.html'"><img src="wb.png">%DEVICEID02%</button>
+  -->
   <button type="button" class="image-btn" onclick="window.location.href='setup.html'"><img src="settings.png">Setup</button>
-  
-
 </body>
 </html>
      

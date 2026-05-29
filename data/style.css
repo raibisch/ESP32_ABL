@@ -5,7 +5,6 @@ html {
   text-align: center;
   font-size:0.8rem;
   min-width:320px;
-  place-items: center;
 }
 h1{color: blue;padding: 15px;}
 h3{color:blue;padding:10px;}
@@ -27,7 +26,6 @@ body{ font-weight: bold;
    border-radius: 16px;
    padding: 1px;
 }
-
 
 .button, .buttonblue, .buttongreen, .buttonred, .buttonyellow, .buttonorange, .buttonlink { 
   display: inline-block;
@@ -176,7 +174,7 @@ td{
 
 textarea{
   width:80%;
-  max-width: 400px;
+  max-width: 500px;
   height:25em;}
 
 .myblink {
