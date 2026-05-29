@@ -1058,8 +1058,8 @@ void ABL_Send(uint8_t wb_ix,  ABL_POLL_STATUS s)
   break;
  } // end of swtich(s) --> ABL_POLL_STATUS
 
- AsyncWebLog.println("Tx" + tx);
- debug_printf("TX:%s\r\n",tx.c_str());
+ AsyncWebLog.println("TX" + tx);
+ debug_printf("TX %s\r\n",tx.c_str());
  digitalWrite(ABL_RX_LOW_ENABLE_GPIO,1);
  for (int i =0; i< tx.length(); i++)
  {
@@ -1132,7 +1132,7 @@ cnt:               0      1         2          3 4  5 6  7 8
   if         (s.indexOf("03A02E") && s.length()>=28)
   //if (s.startsWith(">01030A2E") && s.length()>=28 )  // 2E = Read current (full)
   {
-       AsyncWebLog.println("Status:" + s.substring(9,11)+ " Ipwm:" + s.substring(13,15) + " I1:" + s.substring(15,19) +  + " I2:" + s.substring(19,23) + " I3:" + s.substring(23,27));  
+       AsyncWebLog.println("\r\nStatus:" + s.substring(9,11)+ " Ipwm:" + s.substring(13,15) + " I1:" + s.substring(15,19) +  + " I2:" + s.substring(19,23) + " I3:" + s.substring(23,27));  
        ABL_rx_status[wb_ix] = s.substring(9,11);
        try
        {
