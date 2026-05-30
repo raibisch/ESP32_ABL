@@ -189,6 +189,12 @@ Additionally, have a look a the GPIO PINs as specified here: https://www.olimex.
 ![Fritzing](/pict/esp32_abl_fritzing.png) ![prototype](/pict/platine_prototype.jpg) 
 (board is cut to fit in a DIN hat rail case)
 
+### NEW in V2.0: Waveshare Esp32-S2 RS485 Modul
+Ready to use solution:
+![Waveshare](/pict/waveshare_esp32-s3_rs485.png)
+
+
+
 ## Helpful Infos and links and investigations (most in german)
 
 ### Software
@@ -203,11 +209,16 @@ https://www.goingelectric.de/forum/viewtopic.php?f=34&t=38749&start=60
 
 https://www.goingelectric.de/forum/viewtopic.php?p=1550459#
 
-### Hardware
+### ABL-Wallbus Modbus-Connector
 
-![prototype](/pict/ABL_Modbus_Connector.jpg)
+![modbus-connector-1](/pict/ABL_Modbus_Connector.jpg)
 connect RS485 to Pin1 (=A) and Pin2 (=B) of left RJ45-Connector in Wallbox
 the termination Jumper may be optional (worked for me with and without)
+
+### Other Modbus-Connector Variants:
+![modubus-rj12_belegung](/pict/ABL_Modbus_RJ12_belegung.jpg)
+![modubus-jr12_buchse](/pict/ABL_Modbus_RJ12_buchse.jpg)
+
 ...more infos:
 https://github.com/evcc-io/evcc/discussions/2801
 
@@ -272,6 +283,13 @@ V1.1 ABL-Box without internal current-sensor: calculate power and consumption fr
 V 1.2 index-page redesign, fixes for kW/h-calculation, fetch kW/h sum, Info-page, display chargetime, bugfixes.
 
 V1.2.2 Bugfix for 'virtual kW/h-calculation' and Modbus timeouts
+
+V1.2.3 More granular Imax Setting in 1A Steps (from 6A, 7A...16A) for external Imax setting.
+
+V2.0.0 initial version with support for 2 Wallboxes, "Waveshare ESP32-S3 RS485" Modul support.
+
+V2.1.0 load management (load sharing (max 8A) per Box, or priority for one Wallbox) for 2 Wallboxes
+
 
 ## Ideas:
 - MQTT-client 

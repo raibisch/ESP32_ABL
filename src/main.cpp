@@ -740,12 +740,12 @@ void calculate_kWh(uint_fast16_t wb_ix)
    sPrint += wb_ix+1;
    sPrint += " rx_status:";
    sPrint += ABL_rx_status[wb_ix];
-    if (ABL_PauseFlag[wb_ix])
+   if (ABL_PauseFlag[wb_ix])
    {
     sPrint += " pause";
    }
   
-   AsyncWebLog.println(sPrint);
+   //AsyncWebLog.println(sPrint);
    if (ABL_rx_status[wb_ix].startsWith("?")) // no calulation at unvalid data
    {
     return;
@@ -854,8 +854,9 @@ void calculate_kWh(uint_fast16_t wb_ix)
       debug_printf("W/h:%d\r\n", ABL_rx_Wh);
       ABL_Wh_Sum_akt[wb_ix] = ABL_Wh_Sum_old[wb_ix] + ABL_rx_Wh[wb_ix];
 
-      sPrint= "[Calc_C]WB"+ String(wb_ix+1) + " "+ ABL_sChargeTime[wb_ix] + " Wh-akt:" + ABL_rx_Wh[wb_ix]+ " Wh-Sum:" + ABL_Wh_Sum_akt[wb_ix] ;
+      sPrint= "\r\n[Calc_C]WB"+ String(wb_ix+1) + " "+ ABL_sChargeTime[wb_ix] + " Wh-akt:" + ABL_rx_Wh[wb_ix]+ " Wh-Sum:" + ABL_Wh_Sum_akt[wb_ix];
       AsyncWebLog.println(sPrint);
+
   }
   else
   {
@@ -1118,6 +1119,9 @@ cnt:               0      1         2          3 4  5 6  7 8
 */
   bool ret = false;
   uint_fast16_t wb_ix = 0;
+  String sLog = "RX"; sLog+= s;
+  AsyncWebLog.print(sLog);
+  
   if (s.startsWith("01",1))
   {
      wb_ix = 0;
@@ -1132,7 +1136,10 @@ cnt:               0      1         2          3 4  5 6  7 8
   if         (s.indexOf("03A02E") && s.length()>=28)
   //if (s.startsWith(">01030A2E") && s.length()>=28 )  // 2E = Read current (full)
   {
-       AsyncWebLog.println("\r\nStatus:" + s.substring(9,11)+ " Ipwm:" + s.substring(13,15) + " I1:" + s.substring(15,19) +  + " I2:" + s.substring(19,23) + " I3:" + s.substring(23,27));  
+       String sLog = "";
+       sLog.reserve(250);
+       sLog = "\r\nStatus:" + s.substring(9,11)+ " Ipwm:" + s.substring(13,15) + " I1:" + s.substring(15,19) +  + " I2:" + s.substring(19,23) + " I3:" + s.substring(23,27);
+       AsyncWebLog.println(sLog);  
        ABL_rx_status[wb_ix] = s.substring(9,11);
        try
        {
@@ -1152,8 +1159,9 @@ cnt:               0      1         2          3 4  5 6  7 8
          {i3=0;}
          
          ABL_rx_Isum[wb_ix] = (i1 +i2 + i3) / 10;
-
-         AsyncWebLog.println("Ipwm="+ String(ABL_rx_Ipwm[wb_ix])+  " I="+ String(i1/10.0)+ "+" + String(i2/10.0) +"+" +String(i3/10.0) +"+ Isum="+ String(ABL_rx_Isum[wb_ix])  + "\r\n");
+         
+         sLog = "Ipwm"+ String(ABL_rx_Ipwm[wb_ix])+  " I="+ String(i1/10.0)+ "+" + String(i2/10.0) +"+" +String(i3/10.0) +"+ Isum="+ String(ABL_rx_Isum[wb_ix])  + " \r\n";
+         AsyncWebLog.println(sLog);
          ret = true;
       
        }
@@ -1199,9 +1207,10 @@ void serialEventABL()
      if (inChar == '\n') 
      {
       //debug_printf("RX:%s\r\n",ABL_rx_String.c_str());
-      AsyncWebLog.println("RX"+ ABL_rx_String);
+      //AsyncWebLog.println("RX"+ ABL_rx_String);
       if (ABL_ParseReceive(ABL_rx_String))
       {
+       
         if (ABL_rx_String.startsWith("01",1))
          {ABL_rx_timeoutcount[0] = 0;}
         else if (ABL_rx_String.startsWith("02",1))
@@ -1297,8 +1306,8 @@ void initWifi(bool bSetAP)
     else
     {
       WiFi.disconnect(false, true);
-      debug_printf("\r\n*** no valid login to:%s ***\r\n", varStore.varWIFI_s_SSID.c_str());
-      debug_printf("*** connect to local AP:'ESP_ABL_AP' IP: 192.168.4.1 ***\r\n")
+      debug_printf("\r\n******** no valid login to:'%s' *******************************\r\n", varStore.varWIFI_s_SSID.c_str());
+      debug_printf(    "******** connect to local AP:'ESP_ABL_AP' IP: 192.168.4.1 *****\r\n")
       varStore.varWIFI_s_Mode = "AP";
       WiFi.mode(WIFI_AP);
       WiFi.softAP("ESP_ABL_AP", NULL, 6, 0, 4,false);

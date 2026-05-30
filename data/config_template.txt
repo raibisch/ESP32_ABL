@@ -14,7 +14,7 @@ varWIFI_s_SSID=;
  
 varABL_i_A_soll_low = 6;
 varABL_i_A_soll_high = 16;
-varABL_i_Scantime_ms = 30000;
+varABL_i_Scantime_ms = 10000;
 
 varABL_i_U_netz = 230;  
 
@@ -26,21 +26,28 @@ varABL_i_Watt_10A= 6900;
 varABL_i_Watt_08A= 5520;
 varABL_i_Watt_06A= 4140;
 
+;for ABL-Box without current sensor
 ;measured for ID.3 pure 
-;2-phase 
+;WB01 2-phase 
 ;varABL_i_Watt_16A= 7210; 
+;varABL_i_Watt_15A= 6900;
+;varABL_i_Watt_14A= 6440;
+;varABL_i_Watt_13A= 5980;
 ;varABL_i_Watt_12A= 5430;
+;varABL_i_Watt_11A= 5060;
 ;varABL_i_Watt_10A= 4600;
+;varABL_i_Watt_09A= 4100;
 ;varABL_i_Watt_08A= 3450;
+;varABL_i_Watt_07A= 3220;
 ;varABL_i_Watt_06A= 2650;
 
-;1-phase 
+;WB01 1-phase 
 ;varABL_i_Watt_16A= 3680;
 ;varABL_i_Watt_12A= 2760;
 ;varABL_i_Watt_10A= 2300;
-;varABL_i_Watt_08A= 1840;
+;varABL_i_Watt_08A= 1850;
+;varABL_i_Watt_07A= 1610;
 ;varABL_i_Watt_06A= 1380;
-
 
 ;for Version compiled with MQTT_ENABLE
 ;=====================================
