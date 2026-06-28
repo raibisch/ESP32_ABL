@@ -1,0 +1,119 @@
+// ---- begin KI-code -------------------------------------------------------------------
+
+#include <WiFi.h>
+#include <ESPAsyncWebServer.h>
+#include <ArduinoJson.h>
+
+AsyncWebServer server(80);
+
+// Verknüpfung mit deiner bestehenden ABL-Steuerung
+void setWallboxPowerLimit(float kw) {
+  // Dein Code: Berechne Ampere aus kW (z.B. 4.2 kW / 3 Phasen = ca. 6A)
+  // Und sende es an das ABL-Protokoll
+  Serial.printf("[§14a] Neues Limit gesetzt: %.2f kW\n", kw);
+}
+
+void setupAsyncAPI() {
+  
+  // POST-Endpunkt für die Leistungsbegrenzung
+  server.on("/api/v1/charge_limit", HTTP_POST, [](AsyncWebServerRequest *request){}, 
+    NULL, // Kein File-Upload
+    [](AsyncWebServerRequest *request, uint8_t *data, size_t len, size_t index, size_t total) {
+      
+      // JSON-Dokument vorbereiten
+      JsonDocument doc;
+      DeserializationError error = deserializeJson(doc, (const char*)data, len);
+
+      // Fehlerhaftes JSON abfangen
+      if (error) {
+        request->send(400, "application/json", "{\"error\":\"Invalid JSON\"}");
+        return;
+      }
+
+      // Prüfen, ob der Schlüssel existiert
+      if (doc.containsKey("max_power_kw")) {
+        float limit_kw = doc["max_power_kw"];
+
+        // Plausibilitätsprüfung (0.0 für Stop, 4.2 für §14a, bis max. 11/22 kW)
+        if (limit_kw >= 0.0 && limit_kw <= 22.0) {
+          
+          // Hier wird deine bestehende Steuerfunktion aufgerufen
+          setWallboxPowerLimit(limit_kw);
+
+          // JSON-Antwort erstellen
+          JsonDocument responseDoc;
+          responseDoc["status"] = "success";
+          responseDoc["limited_to_kw"] = limit_kw;
+
+          String responseString;
+          serializeJson(responseDoc, responseString);
+          
+          request->send(200, "application/json", responseString);
+          return;
+        }
+      }
+
+      request->send(400, "application/json", "{\"error\":\"Missing or invalid max_power_kw\"}");
+    }
+  );
+
+  // Server starten
+  server.begin();
+}
+
+void setup() {
+  Serial.begin(115200);
+  // WiFi-Verbindung hier initialisieren...
+  
+  setupAsyncAPI();
+}
+
+void loop() {
+  // Der AsyncWebServer benötigt KEINEN Aufruf im loop().
+  // Er läuft vollautomatisch im Hintergrund auf dem ESP32-Netzwerk-Stack!
+}
+
+-//  END -KI-COde  ---------------
+
+
+/*
+Abfrage mit http:
+
+Der Befehl mit httpie ist im Vergleich zu curl deutlich kürzer und übersichtlicher, da das Tool das JSON-Format und die Header automatisch im Hintergrund setzt.Verwende diesen Befehl im Linux-Terminal (ersetze <ESP32_IP> durch die IP deines ESP32):bashhttp POST http://<ESP32_IP>/api/v1/charge_limit max_power_kw:=4.2
+Verwende Code mit Vorsicht.Warum genau diese Schreibweise?POST: Gibt die HTTP-Methode an.max_power_kw:=4.2: Das := (Doppelpunkt und Gleichheitszeichen) ist bei httpie entscheidend. Es signalisiert dem Tool, dass der Wert 4.2 als Zahl (Float) und nicht als Text (String) in das JSON eingebettet werden soll.So sieht die Ausgabe im Terminal aus:httpie formatiert die Antwort deines ESP32 automatisch farbig und übersichtlich:httpHTTP/1.1 200 OK
+Content-Length: 40
+Content-Type: application/json
+Connection: close
+
+{
+    "limited_to_kw": 4.2,
+    "status": "success"
+}
+
+
+Wenn du zusätzlich sehen möchtest, welche genauen Header httpie an deinen ESP32 abschickt, kannst du das Flag -v (verbose) anhängen:bashhttp -v POST http://<ESP32_IP>/api/v1/charge_limit max_power_kw:=4.2
+
+
+eingener Test:
+
+juergen@jgpc:~
+$ http 192.168.2.108/fetchjson
+HTTP/1.1 200 OK
+Accept-Ranges: none
+Connection: close
+Content-Length: 92
+Content-Type: text/json
+
+{
+    "ctime": "00:00:00",
+    "ipwm": 8,
+    "kw": 0.0,
+    "status": "A1",
+    "wh": 0.0,
+    "whsum": 7043363
+}
+
+
+
+
+*/

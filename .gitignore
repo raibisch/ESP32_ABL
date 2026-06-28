@@ -4,3 +4,6 @@ config.txt
 *.fzz
 screenshots_*
 sdkconfig.*
+*intern.*
+*.intern
+

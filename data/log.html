@@ -19,14 +19,10 @@
   </p>
   <button class="buttonlink" id="add"  onclick="toggleScroll()">scroll on/off </button>
   </p>
-  <!--
-  <a class="buttonlink" href="setup.html">back</a>
-  -->
 </div>
 <div class="outer_frame">
   <p></p>
-  <button type="button" class="image-btn" onclick="history.back()"><img src="home.png"></button>
-  <button type="button" class="image-btn" onclick="window.location.href='setup.html'"><img src="settings.png">Setup</button>
+  <button type="button" class="image-btn" onclick="history.back()"><img src="home.png">Home</button>
 </div>
 <script>
   var stopscroll=false;
@@ -43,7 +39,7 @@
  
   function addText(text)
   { 
-    text = text.replace("<LF>","\n");
+    text = text.replace("<LF>","\r\n");
     document.getElementById("logtext").value += (text);
     if (stopscroll==false)
     {

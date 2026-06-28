@@ -24,7 +24,7 @@
        <div id="ABL_KWH_IST" class="ringtext_value">---</div>
        <div class="ringtext_unit">[kW/h]</div>
        <div class="ringtext_time" id="ABL_CHARGE_TIME">--:--</div>
-       <div class="ringtext_status" id="ABL_STATUS">--</div>
+       <div class="ringtext_status" id="ABL_STATUS">??</div>
      </div>
      <table>
             <tr>
@@ -54,7 +54,7 @@
     </form>
     
     <button type="button" class="image-btn" onclick="window.location.href='log.html'"><img src="file-list.png">Log</button>
-    <button type="button" class="image-btn" onclick="window.location.href='setcurrent2.html'"><img src="current.png" >Set-Current</button>
+    <button type="button" class="image-btn" onclick="window.location.href='setpower2.html'"><img src="current.png" >Set-Power</button>
     <button type="button" class="image-btn" onclick="window.location.href='setup.html'"><img src="settings.png">Setup</button>
 
     <button type="button" class="image-btn" onclick="window.location.href='index.html'"><img src="wb.png">%DEVICEID%</button>
@@ -64,7 +64,8 @@
             function reqListener ()
             {
               var myResponse = this.responseText;
-              //myResponse = myResponse.toUpperCase();
+              // Test:
+              //myResponse = "16,0.00,pause C1,0.00,0,01:02:03";
               //console.log(this.responseText);
               var myArray = myResponse.split(",");
               
@@ -73,7 +74,7 @@
               {
                document.getElementById('ABL_A_SOLL').innerHTML  = myArray[0];
                document.getElementById('ABL_KW_IST').innerHTML  = myArray[1];
-               document.getElementById('ABL_STATUS').innerHTML  = myArray[2];
+            
                document.getElementById('ABL_KWH_IST').innerHTML = myArray[3];
                document.getElementById('ABL_KWH_SUM').innerHTML = (myArray[4]/1000);
                document.getElementById('ABL_CHARGE_TIME').innerHTML = myArray[5];
@@ -81,22 +82,25 @@
               myStatus = String(myArray[2]);
             
               // example : https://code-boxx.com/change-override-css-with-javascript
-              if (myStatus.startsWith('A'))
+              if (myStatus.includes('A'))
               {
+                document.getElementById('ABL_STATUS').innerHTML  = "open [" + myArray[2] + "]";
                 document.getElementById('ABL_STATUS').style.color = 'green';
                 //document.getElementById('RING_ID').className = "outerring_blink";
                 document.getElementById('RING_ID').style.background = 'green';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'visible';
               }
-              else if (myStatus.startsWith('B'))
+              else if (myStatus.includes('B'))
               {
+                document.getElementById('ABL_STATUS').innerHTML  = "connect [" + myArray[2] + "]";
                 document.getElementById('ABL_STATUS').style.color = 'Teal'           // gruenblau
                 document.getElementById('RING_ID').style.background = 'Teal';
                 document.getElementById('RING_ID').className = "outerring_blink";
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'visible';
               }
-              else if (myStatus.startsWith('C'))
+              else if (myStatus.includes('C'))
               {
+                document.getElementById('ABL_STATUS').innerHTML  = "charge [" + myArray[2] + "]";
                 document.getElementById('ABL_STATUS').style.color = 'blue';    
                 document.getElementById('RING_ID').style.background = 'blue';
                 document.getElementById('RING_ID').className = "outerring_blink";
@@ -104,38 +108,43 @@
               }
               else if (myStatus.startsWith('E'))
               {
+                document.getElementById('ABL_STATUS').innerHTML  = "[" + myArray[2] + "]";
                 document.getElementById('ABL_STATUS').style.color = 'black';
-                document.getElementById('RING_ID').style.background = 'yellow';
+                document.getElementById('RING_ID').style.background = 'gray';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
               else if (myStatus.startsWith('F'))
               {
+                document.getElementById('ABL_STATUS').innerHTML  = "ERROR [" + myArray[2] + "]";
                 document.getElementById('ABL_STATUS').style.color = 'red';
                 //document.getElementById('RING_ID').className = "outerring_blink";
                 document.getElementById('RING_ID').style.background = 'red';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
-              else if (myStatus.startsWith("no"))
+              else if (myStatus.includes("no"))
               {
+                document.getElementById('ABL_STATUS').innerHTML  = "timeout [" + myArray[2] + "]";
                 document.getElementById('ABL_STATUS').style.color = 'black';
                 document.getElementById('RING_ID').className = "outerring_blink";
                 document.getElementById('RING_ID').style.background = 'Fuchsia';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
-              else if (myStatus.startsWith("pau"))
+              else
+              {
+                document.getElementById('ABL_STATUS').innerHTML  = "[" + myArray[2] + "]";
+                document.getElementById('ABL_STATUS').style.color = 'red';
+                document.getElementById('RING_ID').className = "outerring_blink";
+                document.getElementById('RING_ID').style.background = 'gray';
+              }
+
+              if (myStatus.includes("pau"))
               {
                 document.getElementById('ABL_STATUS').style.color = 'orange';
                 //document.getElementById('RING_ID').className = "outerring_blink";
-                document.getElementById('RING_ID').style.background = '#ebce14';
+                //document.getElementById('RING_ID').style.background = '#ebce14';
                 document.getElementById("BUTTON_PAUSE").style.visibility= 'hidden';
               }
-              else
-              {
-                document.getElementById('ABL_STATUS').style.color = 'black';
-                document.getElementById('RING_ID').className = "outerring_blink";
-                document.getElementById('RING_ID').style.background = 'gray';
-                //document.getElementById("BUTTON_PAUSE").style.visibility= 'visible';
-              }
+              
             }
             var oReq = new XMLHttpRequest();
             oReq.addEventListener("load", reqListener);
@@ -144,7 +153,7 @@
               //var dateNow = new Date();  // current time
               oReq.open("GET", "/fetch2");
               oReq.send();
-            }, 2000);
+            }, 1200);
     </script>
     </body>
 </html>

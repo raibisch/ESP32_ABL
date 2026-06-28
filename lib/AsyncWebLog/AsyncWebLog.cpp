@@ -65,14 +65,13 @@ include this script im Webpage 'log.html' or include it in PROG_MEM definition o
 void AsyncWebLogClass::begin(AsyncWebServer *server, const char* url)
 {
     _server = server;
-    _events = new  AsyncEventSource("/logevents");
-
+    _events = new AsyncEventSource("/logevents");
 
   //Route  for log.html 
   _server->on("/log.html",          HTTP_GET, [](AsyncWebServerRequest *request)
   {
    debug_println("Request /log.html");
-   request->send(SPIFFS, "/log.html", String(), false, NULL);
+   request->send(myFS, "/log.html", String(), false, NULL);
    // for static Webpage :
    //AsyncWebServerResponse *response = request->beginResponse_P(200, "text/html", LOGPAGE_HTML, LOGPAGE_HTML_SIZE);
    //response->addHeader("Content-Encoding","gzip");
@@ -96,96 +95,39 @@ void AsyncWebLogClass::begin(AsyncWebServer *server, const char* url)
     #endif
 }
 
-#ifndef MINI_WEBLOG
-void AsyncWebLogClass::print(String m){
-    _events->send(m.c_str(),"logprint", millis());
-}
-
-void AsyncWebLogClass::print(const char *m){
-    _events->send(m,"logprint", millis());
-}
-
-void AsyncWebLogClass::print(char *m){
-    _events->send(m,"logprint", millis());
-}
-
-void AsyncWebLogClass::print(int m){
-    _events->send(String(m).c_str(),"logprint", millis());
-}
-
-void AsyncWebLogClass::print(uint8_t m){
-    _events->send(String(m).c_str(),"logprint", millis());
-}
-
-void AsyncWebLogClass::print(uint16_t m){
-    _events->send(String(m).c_str(),"logprint", millis());
-}
-
-
-void AsyncWebLogClass::print(double m){
-    _events->send(String(m).c_str(),"logprint", millis());
-}
-
-void AsyncWebLogClass::print(float m){
-    _events->send(String(m).c_str(),"logprint", millis());
-}
-
-void AsyncWebLogClass::println(const char *m)
+// overwrite Print func
+size_t AsyncWebLogClass::write(uint8_t m) 
 {
-    String s= String(m)+"<LF>";
-    _events->send(s.c_str(),"logprint", millis());
+  debug_println("no non-bufferd write on AsyncWebLog");
+  return 0;
+  /**
+  if (!_events)
+    return 0;
+  String s = "";
+  s += (const char) m;
+  s.remove('\r');
+  s.replace("\n", "<LF>");
+  _events->send((const char*) s.c_str(), "logprint", millis(), 10000);
+  debug_println("no non-bufferd write on AsyncWebLog");
+  return s.length();
+  */
 }
 
-void AsyncWebLogClass::println(char *m)
+size_t AsyncWebLogClass::write(const uint8_t* buffer, size_t size) 
 {
-   String s= String(m)+"<LF>";
-    _events->send(s.c_str(),"logprint", millis());
+   if (!_events)
+    return 0;
+  String s = (const char*) buffer;
+  if (s.indexOf("\r\n") >= 0)
+  {
+   s.replace("\r\n", "<LF>");
+   //s.replace("\r","");
+   delay(5); // wegen doppelter Ausgabe evt. noch etwas groesser machen ?!
+  }
+  
+  _events->send((const char*) s.c_str(),"logprint", millis(), 10000);
+  return(s.length());
 }
-
-void AsyncWebLogClass::println(int m){
-    String s= String(m)+"<LF>";
-    _events->send(s.c_str(),"logprint", millis());
-}
-
-void AsyncWebLogClass::println(uint8_t m)
-{
-    String s= String(m)+"<LF>";
-    _events->send(s.c_str(),"logprint", millis());
-}
-
-void AsyncWebLogClass::println(uint16_t m)
-{
-    String s= String(m)+"<LF>";
-    _events->send(s.c_str(),"logprint", millis());
-}
-
-void AsyncWebLogClass::println(uint32_t m)
-{
-     String s= String(m)+"<LF>";
-    _events->send(s.c_str(),"logprint", millis());
-}
-
-void AsyncWebLogClass::println(float m)
-{
-    String s= String(m)+"<LF>";
-    _events->send(s.c_str(),"logprint", millis());
-}
-
-void AsyncWebLogClass::println(double m)
-{
-    String s= String(m)+"<LF>";
-    _events->send(s.c_str(),"logprint", millis());
-}
-#endif
-
-// Print with New Line
-// by JG: don't kill me for the lazy String convertion
-void AsyncWebLogClass::println(String m)
-{
-    String s = m +"<LF>";
-    _events->send(s.c_str(),"logprint", millis(),10000);        
-}
-
 
 #if defined(WebLog_DEBUG)
     void AsyncWebLogClass::DEBUG_Web_SERIAL(const char* message){
@@ -193,4 +135,8 @@ void AsyncWebLogClass::println(String m)
     }
 #endif
 
+#ifdef WEB_APP
 AsyncWebLogClass AsyncWebLog;
+#else
+HardwareSerial AsyncWebLog(1); // no Webserver --> use serial1 
+#endif

@@ -1,3 +1,4 @@
+/*
 html {
   font-family: monospace;
   display: inline-block;
@@ -6,6 +7,16 @@ html {
   font-size:0.8rem;
   min-width:320px;
 }
+*/
+
+html {
+  font-family: monospace;
+  display: inline-block;
+  margin: auto;
+  text-align: center;
+}
+
+
 h1{color: blue;padding: 15px;}
 h3{color:blue;padding:10px;}
 body{ font-weight: bold;}
@@ -37,64 +48,6 @@ body{ font-weight: bold;
   color: white;
   font-size: 1.5rem;
   text-align: center;
-  cursor: pointer;
-}
-
-/* style range */
-input[type=range] {
-  width: 100%;
-  margin-left: 0;
-}
-
-/* style datalist */
-input[type=range] + datalist {
-  display: flex;
-  margin-top: -4px;
- font-size: medium;
- text-align: center;
-}
-input[type=range] + datalist option {
-  display: inline-block;
-  width: calc((100% - 12px) / (var(--list-length) - 1));
- 
-}
-input[type=range] + datalist option:first-child {
-
-  width: calc((100% - 12px) / ((var(--list-length) - 1) * 2) + 6px);
-}
-input[type=range] + datalist option:last-child {
-
-  width: calc((100% - 12px) / ((var(--list-length) - 1) * 2) + 6px);
-  text-align: right;
-}
-
-.slider {
-  appearance: none;
-  height: 25px;
-  background: #092195;
-  outline: none;
-  opacity: 0.7;
-  -webkit-transition: .2s;
-  transition: opacity .2s;
-}
-
-.slider:hover {
-  opacity: 1;
-}
-
-.slider::-webkit-slider-thumb {
-  appearance: none;
-  width: 25px;
-  height: 25px;
-  background: white;
-  cursor: pointer;
-}
-
-.slider::-moz-range-thumb {
-  appearance: none;
-  width: 25px;
-  height: 25px;
-  background: white;
   cursor: pointer;
 }
 
@@ -133,7 +86,7 @@ input[type=range] + datalist option:last-child {
 
 .container {
   display: inline-block;
-  width: 80%;
+  width: 85%;
   border: 3px solid red;
   border-radius: 10px;
   padding: 15px;  
@@ -174,7 +127,7 @@ td{
 
 textarea{
   width:80%;
-  max-width: 500px;
+  max-width: 800px;
   height:25em;}
 
 .myblink {
@@ -224,28 +177,28 @@ textarea{
 .ringtext_value {
   font-size: 2.7rem;
   position: relative;
-  top: 38%;
+  top: 35%;
   color: black;
   text-align: center;
 }
 
 .ringtext_unit {
   position: relative;
-  top: 38%;
+  top: 35%;
   color: black;
   text-align: center;
 }
 
 .ringtext_time {
   position: relative;
-  top: 45%;
+  top: 53%;
   color: black;
   text-align: center;
 }
 
 .ringtext_status {
   position: relative;
-  top: 51%;
+  top: 38%;
   text-align: center;
 }
 
@@ -274,4 +227,103 @@ textarea{
         opacity: 0.4;
     }
 }
+
+
+/* SLIDER CSS */
+/* https://blog.logrocket.com/creating-custom-css-range-slider-javascript-upgrades/*/
+.sliderticks {
+  display: flex;
+  justify-content: space-between;
+  margin-left: 17px;
+  font-size: 0.8rem;
+  padding: 1px; 
+}
+
+.sliderticks span {
+  display: flex;
+  justify-content: center;
+  width: 3px;
+  height: 5px;
+  color: black;
+  background: red;
+  line-height: 30px;
+}
+
+.range-slider {
+  flex:auto;
+}
+
+.range {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-radius: 20px;
+  max-width: 600px;
+  margin: 0 auto;
+  height: 6rem;
+  width: 95%;
+  background: white;
+  color: black;
+  padding: 5px 0px;
+  border: 3px solid#31746e;
+}
+
+.value {
+  font-size: 1.2rem;    
+  width: 55px;
+  text-align: center;
+  color: black;
+}
+
+
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none; 
+  width: 100%;
+  cursor: pointer;
+  outline: none;
+  border-radius: 15px;
+  height: 6px;
+  background: gray;
+}
+
+/* Thumb: webkit */
+input[type="range"]::-webkit-slider-thumb {
+  /* removing default appearance */
+  -webkit-appearance: none;
+  appearance: none; 
+  /* creating a custom design */
+  height: 23px;
+  width: 23px;
+  background-color: red;
+  border-radius: 20%;
+}
+
+/* Thumb: Firefox */
+input[type="range"]::-moz-range-thumb {
+  height: 20px;
+  width: 20px;
+  background-color: red;
+  border-radius: 20%;
+  border-width: 3px;
+  border: 3px solid #31746e;
+}
+
+input[type="radio"] {
+  appearance: none;
+  width: 30px; 
+  height: 30px; 
+  cursor: pointer;
+  outline: 3px solid #31746e;
+  background: white;
+  padding: 1ex; 
+  border-radius: 20%;
+}
+
+input[type=radio]:checked {
+  background: #31746e;
+  background-color: red
+}
+
+
 

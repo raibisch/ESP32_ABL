@@ -5,6 +5,7 @@
 #include <WiFi.h>
 #include "WiFiGeneric.h"
 #include "math.h"
+#include <ESPping.h>
 //#include <AsyncTCP.h>
 
 #ifdef USE_ETH_INSTEAD_WIFI
@@ -15,6 +16,8 @@
 #include <MQTT.h>
 #endif
 
+#undef round
+
 // set in platformio.ini !
 //#define DEBUG_PRINT 1       
 //#define DEBUG_WITHOUT_ABL 1 //calculate at "no com"
@@ -24,7 +27,7 @@
 // set in platformio.ini !
 // ************************************
 //#define WB_COUNT 1
-//#define WB_COUNT 2
+//#define WB_MAX 2
 // ************************************
 
 #ifdef DEBUG_PRINT
@@ -45,8 +48,8 @@
 
 #ifndef WITHOUT_TEMP
 #include "driver/temp_sensor.h"
+//#include "driver/temperature_sensor.h"
 #endif
-
 
 #include <ESPAsyncWebServer.h>
 #include "ESP32Time.h"
@@ -137,7 +140,7 @@ enum ABL_POLL_STATUS {
 enum ABL_STATUS { 
 ABL_A1=0,     // not connected,  Waiting for EV 
 ABL_B1,       // connected, EV is asking for charging
-ABL_B2,       // connected, EV hat the permission to charge (=charge finished)
+ABL_B2,       // connected, EV has the permission to charge (=charge finished)
 ABL_C2,       // connected, EV in charging 
 ABL_C3,       // connected, EV in charging reduced current
 ABL_C4,       // connected, EV in charging reduced current
@@ -155,7 +158,7 @@ const String ABL_STATUS_STRING[] = {
 "C4",     // connected, EV in charging reduced current
 "??",     // unvalid
 "nocom",  // timeout or no connection
-"pause "   // Pause
+"pause "  // Pause
 };
 
 
@@ -257,41 +260,41 @@ Next Polling in :26sec
 */
 
 
-
-
 uint log_timer = 0;
 unsigned long tmp_poll_time_ms  = 10000;
 unsigned long ABL_PollTime_old;
 unsigned long ABL_StatusSec_old;
 
-//new: 20.4.2026 Erweiterung auf 2 Wallboxen
-# define WB_COUNT2 2
-uint64_t ABL_Wh_Sum_akt[WB_COUNT2];             
-uint64_t ABL_Wh_Sum_old[WB_COUNT2];
-bool ABL_PauseFlag[WB_COUNT2] = {false, false}; //new: 9.3.2026
-float     ABL_rx_Isum[WB_COUNT2] = {0.0,0.0};   // return value from ABL: summ of 3 phases or zero if no sensor availible
-uint16_t  ABL_rx_Ipwm[WB_COUNT2] = {0,0};       // return value from ABL: set from ABL_tx_Icmax
-float     ABL_rx_kW[WB_COUNT2] = {0.0, 0.0};
-uint64_t  ABL_rx_Wh[WB_COUNT2] = {0,0}; // calculated value in Wh *NOT* kWh
-String    ABL_rx_status[WB_COUNT2] = {ABL_STATUS_STRING[ABL_UNVALID], ABL_STATUS_STRING[ABL_UNVALID]};
-String    ABL_rx_status_old[WB_COUNT2] = {"---", "..."};
-bool      ABL_rx_aktiv[WB_COUNT2] = {0,0};
-ABL_POLL_STATUS ABL_tx_status[WB_COUNT2] = {ABL_POLL_STATUS::POLL_Current, ABL_POLL_STATUS::POLL_Current};
-String ABL_sChargeTime[WB_COUNT2] = {"00:00:00","00:00:00"};
+// new: 20.4.2026 extented to 2 Wallboxes
+// define variable arrays to 2 !! independend from WB_COUNT setting !!
+#define WB_MAX 2
+uint64_t ABL_Wh_Sum_akt[WB_MAX];             
+uint64_t ABL_Wh_Sum_old[WB_MAX];
+bool ABL_PauseFlag[WB_MAX] = {false, false}; //new: 9.3.2026
+float     ABL_rx_Isum[WB_MAX] = {0.0,0.0};   // return value from ABL: summ of 3 phases or zero if no sensor availible
+uint16_t  ABL_rx_Ipwm[WB_MAX] = {0,0};       // return value from ABL: set from ABL_tx_Icmax
+float     ABL_rx_kW[WB_MAX] = {0.0, 0.0};
+uint64_t  ABL_rx_Wh[WB_MAX] = {0,0}; // calculated value in Wh *NOT* kWh
+String    ABL_rx_status[WB_MAX] = {ABL_STATUS_STRING[ABL_UNVALID], ABL_STATUS_STRING[ABL_UNVALID]};
+String    ABL_rx_status_old[WB_MAX] = {"---", "..."};
+bool      ABL_rx_aktiv[WB_MAX] = {0,0};
+ABL_POLL_STATUS ABL_tx_status[WB_MAX] = {ABL_POLL_STATUS::POLL_Current, ABL_POLL_STATUS::POLL_Current};
+String ABL_sChargeTime[WB_MAX] = {"00:00:00","00:00:00"};
 
 // now wait for polling
-static bool forcePollFlag[WB_COUNT2] = {false,false};
+static bool ABL_forcePollFlag[WB_MAX] = {false,false};
 
 // Values to ABL
-static uint16_t ABL_tx_Icmax[WB_COUNT2]   = {0,0};
+static uint16_t ABL_tx_Icmax[WB_MAX]   = {0,0};
 static String ABL_rx_String = "";          // a String to hold incoming data
-static uint16_t ABL_rx_timeoutcount[WB_COUNT2] = {0,0};  
+static uint16_t ABL_rx_timeoutcount[WB_MAX] = {0,0};  
 
-static int32_t SYS_ChargeCount[WB_COUNT2] = {0,0};
+static int32_t SYS_ChargeCount[WB_MAX] = {0,0};
 static int32_t SYS_RestartCount = 0;
 static uint16_t SYS_TimeoutCount = 0;
-static String SYS_Version = "V 2.1.0";
-static String SYS_CompileTime =  __DATE__;
+static String SYS_Version = "V2.1.0";
+static String SYS_CompileDate =  __DATE__;
+static String SYS_CompileTime = __TIME__;
 static String SYS_IP = "0.0.0.0";
 
 
@@ -366,7 +369,7 @@ static byte calculateLRC(String s)
 ////////////////////////////////////////////
 /// @brief init builtin LED
 ////////////////////////////////////////////
-void inline initLED()
+void initLED()
 {
 #ifndef WITHOUT_LED
   pinMode(LED_GPIO, OUTPUT);
@@ -428,13 +431,16 @@ class ABL_FileVarStore : public FileVarStore
    uint16_t varABL2_i_Watt_06A;
 
    // 18.5.26 new in V2.0
-   uint16_t varABL_i_PhaseCount=3;
-   uint16_t varABL2_i_PhaseCount=1;
+   uint16_t varABL_i_Phase_count=3;
+   uint16_t varABL2_i_Phase_count=1;
 
    // 13.5.26 new: in V 2.0 Load-Management for 2 Wallboxes
-   uint16_t varABL_i_LoadBal_Imax = 16;
-   uint16_t varABL_i_LoadBal_Mode  = 0;  // 0= 50% per Box, 1=WB1 Prio 2=WB2 Prio
-
+   uint16_t varABL_i_I_limit = 16;
+#if WB_COUNT == 2
+   uint16_t varABL_i_LoadBal_mode  = 0;  // 0= 50% per Box, 1=WB1 Prio 2=WB2 Prio
+#else
+   uint16_t varABL_i_LoadBal_mode  = 1;  // 0= 50% per Box, 1=WB1 Prio 2=WB2 Prio
+#endif
   // Wifi-Parameter
    String varWIFI_s_Mode    = "STA"; // STA=client connect with Router,  AP=Access-Point-Mode (needs no router)
    String varWIFI_s_Password= "mypassword";
@@ -466,35 +472,36 @@ class ABL_FileVarStore : public FileVarStore
      varABL_i_A_soll_high = GetVarInt(GETVARNAME(varABL_i_A_soll_high),16);
      varABL_i_Scantime_ms = GetVarInt(GETVARNAME(varABL_i_Scantime_ms),30000);  
 
-     varABL_i_PhaseCount  = GetVarInt(GETVARNAME(varABL_i_PhaseCount),3);
-
-     varABL_i_Watt_16A    = GetVarInt(GETVARNAME(varABL_i_Watt_16A),(230*varABL_i_PhaseCount*16));
-     varABL_i_Watt_15A    = GetVarInt(GETVARNAME(varABL_i_Watt_15A),(230*varABL_i_PhaseCount*15));
-     varABL_i_Watt_14A    = GetVarInt(GETVARNAME(varABL_i_Watt_14A),(230*varABL_i_PhaseCount*14));
-     varABL_i_Watt_13A    = GetVarInt(GETVARNAME(varABL_i_Watt_13A),(230*varABL_i_PhaseCount*13));
-     varABL_i_Watt_12A    = GetVarInt(GETVARNAME(varABL_i_Watt_12A),(230*varABL_i_PhaseCount*12));
-     varABL_i_Watt_11A    = GetVarInt(GETVARNAME(varABL_i_Watt_11A),(230*varABL_i_PhaseCount*11));
-     varABL_i_Watt_10A    = GetVarInt(GETVARNAME(varABL_i_Watt_10A),(230*varABL_i_PhaseCount*10));
-     varABL_i_Watt_09A    = GetVarInt(GETVARNAME(varABL_i_Watt_09A),(230*varABL_i_PhaseCount*9));
-     varABL_i_Watt_08A    = GetVarInt(GETVARNAME(varABL_i_Watt_08A),(230*varABL_i_PhaseCount*8));
-     varABL_i_Watt_07A    = GetVarInt(GETVARNAME(varABL_i_Watt_07A),(230*varABL_i_PhaseCount*7));
-     varABL_i_Watt_06A    = GetVarInt(GETVARNAME(varABL_i_Watt_06A),(230*varABL_i_PhaseCount*6));
-
-     varABL2_i_PhaseCount = GetVarInt(GETVARNAME(varABL2_i_PhaseCount),1);
-     varABL2_i_Watt_16A   = GetVarInt(GETVARNAME(varABL2_i_Watt_16A),(230*varABL2_i_PhaseCount*16));
-     varABL2_i_Watt_15A   = GetVarInt(GETVARNAME(varABL2_i_Watt_15A),(230*varABL2_i_PhaseCount*15));
-     varABL2_i_Watt_14A   = GetVarInt(GETVARNAME(varABL2_i_Watt_14A),(230*varABL2_i_PhaseCount*14));
-     varABL2_i_Watt_13A   = GetVarInt(GETVARNAME(varABL2_i_Watt_13A),(230*varABL2_i_PhaseCount*13));
-     varABL2_i_Watt_12A   = GetVarInt(GETVARNAME(varABL2_i_Watt_12A),(230*varABL2_i_PhaseCount*12));
-     varABL2_i_Watt_11A   = GetVarInt(GETVARNAME(varABL2_i_Watt_11A),(230*varABL2_i_PhaseCount*11));
-     varABL2_i_Watt_10A   = GetVarInt(GETVARNAME(varABL2_i_Watt_10A),(230*varABL2_i_PhaseCount*10));
-     varABL2_i_Watt_09A   = GetVarInt(GETVARNAME(varABL2_i_Watt_09A),(230*varABL2_i_PhaseCount*9));
-     varABL2_i_Watt_08A   = GetVarInt(GETVARNAME(varABL2_i_Watt_08A),(230*varABL2_i_PhaseCount*8));
-     varABL2_i_Watt_07A   = GetVarInt(GETVARNAME(varABL2_i_Watt_07A),(230*varABL2_i_PhaseCount*7));
-     varABL2_i_Watt_06A   = GetVarInt(GETVARNAME(varABL2_i_Watt_06A),(230*varABL2_i_PhaseCount*6));
-
-     varABL_i_LoadBal_Imax= GetVarInt(GETVARNAME(varABL_i_Imax),16);
-     varABL_i_LoadBal_Mode= GetVarInt(GETVARNAME(varABL_i_LoadBal_Mode),0);
+     varABL_i_Phase_count  = GetVarInt(GETVARNAME(varABL_i_Phase_count),3);
+     varABL_i_I_limit     = GetVarInt(GETVARNAME(varABL_i_I_limit),16);
+  #if WB_COUNT ==2
+     varABL_i_LoadBal_mode= GetVarInt(GETVARNAME(varABL_i_LoadBal_mode),0);
+  #endif
+     varABL_i_Watt_16A    = GetVarInt(GETVARNAME(varABL_i_Watt_16A),(230*varABL_i_Phase_count*16));
+     varABL_i_Watt_15A    = GetVarInt(GETVARNAME(varABL_i_Watt_15A),(230*varABL_i_Phase_count*15));
+     varABL_i_Watt_14A    = GetVarInt(GETVARNAME(varABL_i_Watt_14A),(230*varABL_i_Phase_count*14));
+     varABL_i_Watt_13A    = GetVarInt(GETVARNAME(varABL_i_Watt_13A),(230*varABL_i_Phase_count*13));
+     varABL_i_Watt_12A    = GetVarInt(GETVARNAME(varABL_i_Watt_12A),(230*varABL_i_Phase_count*12));
+     varABL_i_Watt_11A    = GetVarInt(GETVARNAME(varABL_i_Watt_11A),(230*varABL_i_Phase_count*11));
+     varABL_i_Watt_10A    = GetVarInt(GETVARNAME(varABL_i_Watt_10A),(230*varABL_i_Phase_count*10));
+     varABL_i_Watt_09A    = GetVarInt(GETVARNAME(varABL_i_Watt_09A),(230*varABL_i_Phase_count*9));
+     varABL_i_Watt_08A    = GetVarInt(GETVARNAME(varABL_i_Watt_08A),(230*varABL_i_Phase_count*8));
+     varABL_i_Watt_07A    = GetVarInt(GETVARNAME(varABL_i_Watt_07A),(230*varABL_i_Phase_count*7));
+     varABL_i_Watt_06A    = GetVarInt(GETVARNAME(varABL_i_Watt_06A),(230*varABL_i_Phase_count*6));
+#if WB_COUNT == 2
+     varABL2_i_Phase_count = GetVarInt(GETVARNAME(varABL2_i_Phase_count),1);
+     varABL2_i_Watt_16A   = GetVarInt(GETVARNAME(varABL2_i_Watt_16A),(230*varABL2_i_Phase_count*16));
+     varABL2_i_Watt_15A   = GetVarInt(GETVARNAME(varABL2_i_Watt_15A),(230*varABL2_i_Phase_count*15));
+     varABL2_i_Watt_14A   = GetVarInt(GETVARNAME(varABL2_i_Watt_14A),(230*varABL2_i_Phase_count*14));
+     varABL2_i_Watt_13A   = GetVarInt(GETVARNAME(varABL2_i_Watt_13A),(230*varABL2_i_Phase_count*13));
+     varABL2_i_Watt_12A   = GetVarInt(GETVARNAME(varABL2_i_Watt_12A),(230*varABL2_i_Phase_count*12));
+     varABL2_i_Watt_11A   = GetVarInt(GETVARNAME(varABL2_i_Watt_11A),(230*varABL2_i_Phase_count*11));
+     varABL2_i_Watt_10A   = GetVarInt(GETVARNAME(varABL2_i_Watt_10A),(230*varABL2_i_Phase_count*10));
+     varABL2_i_Watt_09A   = GetVarInt(GETVARNAME(varABL2_i_Watt_09A),(230*varABL2_i_Phase_count*9));
+     varABL2_i_Watt_08A   = GetVarInt(GETVARNAME(varABL2_i_Watt_08A),(230*varABL2_i_Phase_count*8));
+     varABL2_i_Watt_07A   = GetVarInt(GETVARNAME(varABL2_i_Watt_07A),(230*varABL2_i_Phase_count*7));
+     varABL2_i_Watt_06A   = GetVarInt(GETVARNAME(varABL2_i_Watt_06A),(230*varABL2_i_Phase_count*6));
+#endif
 #ifdef MQTT_ENABLE
      varMQTT_i_PORT       = GetVarInt(GETVARNAME(varMQTT_i_PORT),1883);
      varMQTT_s_HOST       = GetVarString(GETVARNAME(varMQTT_s_HOST)); 
@@ -518,7 +525,7 @@ static inline void forcePolling()
 {
    for (size_t i = 0; i < WB_COUNT; i++)
    {
-     forcePollFlag[i] = true;
+     ABL_forcePollFlag[i] = true;
    }
    
 }
@@ -565,7 +572,7 @@ void mqtt_setup()
   }
   debug_println("* MQTT: connected!");
 
-  debug_printf("* MQTT suscribe %s\r\n", varStore.varMQTT_s_TOPIC_IN);
+  debug_printf("* MQTT suscribe %s\r\n", varStore.varMQTT_s_TOPIC_IN.c_str());
   mqttclient.subscribe(varStore.varMQTT_s_TOPIC_IN);
 }
 
@@ -592,7 +599,6 @@ inline void mqtt_loop()
 }
 #endif // MQTT
          
-
 /// @brief ABL Rx-Timeout after 2 polling periodes
 bool inline testTimeount(uint_fast16_t wb_ix)
 {
@@ -689,8 +695,8 @@ void inline initHistory()
 
    debug_printf("restored ABL_Wh_Sum_old WB1= %d\r\n",ABL_Wh_Sum_old[0]);
    debug_printf("restored ABL_Wh_Sum_old WB2= %d\r\n",ABL_Wh_Sum_old[1]);
-   //SYS_RestartCount = hist.getInt("restart",0);
-   //SYS_TimeoutCount = hist.getInt("timeout",0);
+   SYS_RestartCount = hist.getInt("restart",0);
+   SYS_TimeoutCount = hist.getInt("timeout",0);
    SYS_ChargeCount[0] =  hist.getInt("charge",0);
    SYS_ChargeCount[1] =  hist.getInt("charge2,0");
    debug_printf("restored charge count 1= %d\r\n",SYS_ChargeCount[0]);
@@ -726,6 +732,12 @@ bool saveHistory()
 }
 // ----  END EPROM Simulation -----------------------------------------
 
+
+void get_kWhvar(uint8_t wb_ix)
+{
+
+}
+
 //////////////////////////////////////////////////////////
 static double Wh = 0;
 /// @brief calculate aktual an total (sum) of W/h
@@ -734,25 +746,33 @@ static double Wh = 0;
 /////////////////////////////////////////////////////////
 void calculate_kWh(uint_fast16_t wb_ix)
 {
-   String sPrint;
-   sPrint.reserve(100);
-   sPrint = "[Calc__]WB";
-   sPrint += wb_ix+1;
-   sPrint += " rx_status:";
-   sPrint += ABL_rx_status[wb_ix];
+   //String sPrint;
+   //sPrint.reserve(100);
+   //sPrint = "[Calc]WB";
+   //sPrint += wb_ix;
+   //sPrint += " rx_status:";
+   //sPrint += ABL_rx_status[wb_ix];
    if (ABL_PauseFlag[wb_ix])
    {
-    sPrint += " pause";
+    //sPrint += " pause";
    }
   
    //AsyncWebLog.println(sPrint);
    if (ABL_rx_status[wb_ix].startsWith("?")) // no calulation at unvalid data
    {
+    forcePolling();
     return;
    }
 
-   if (ABL_rx_status[wb_ix].startsWith("no")) // no calulation at timeout
+   if (ABL_rx_status[wb_ix].indexOf("no") >= 0) // no calulation at timeout
    {
+    forcePolling();
+    return;
+   }
+
+   if (ABL_rx_Ipwm[wb_ix] > 16)  // unvalid Ipwm
+   {
+    forcePolling();
     return;
    }
 
@@ -760,14 +780,14 @@ void calculate_kWh(uint_fast16_t wb_ix)
    if (ABL_rx_status_old[wb_ix] != ABL_rx_status[wb_ix]) // Status is changing
    {
     // end charging
-    if (ABL_rx_status_old[wb_ix].startsWith("C"))
+    if (ABL_rx_status_old[wb_ix].indexOf("C") >= 0)
     {
       saveHistory();
       hist.putInt("charge",(SYS_ChargeCount[wb_ix])++);
     }
     else
     // start charging
-    if (ABL_rx_status[wb_ix].startsWith("C"))
+    if (ABL_rx_status[wb_ix].indexOf("C") >= 0)
     {
       saveHistory();
       rtc[wb_ix].setTime(1);
@@ -776,7 +796,7 @@ void calculate_kWh(uint_fast16_t wb_ix)
       ABL_rx_kW[wb_ix]   = 0;
     }
     else
-    if (ABL_rx_status[wb_ix].startsWith("A"))
+    if (ABL_rx_status[wb_ix].indexOf("A") >= 0)
     {
       saveHistory();
       ABL_rx_Isum[wb_ix] = 0;
@@ -786,7 +806,7 @@ void calculate_kWh(uint_fast16_t wb_ix)
     }
     else
      // End of Charging  by JG 24.3.2024 set kw=0 at
-    if (ABL_rx_status[wb_ix].startsWith("B"))
+    if (ABL_rx_status[wb_ix].indexOf("B") >= 0)
     {
       ABL_rx_kW[wb_ix] = 0;
       ABL_rx_Isum[wb_ix] = 0;
@@ -795,52 +815,115 @@ void calculate_kWh(uint_fast16_t wb_ix)
     ABL_rx_status_old[wb_ix] = ABL_rx_status[wb_ix];
    } // End Status is changing
 
+
+  // get kWh values from config.txt for every single Ipwm value ();  'varABL_i_Phase_count' is ignored
+  //#define CALC_SINGLE_VALUES
+
+  // calculate kWh values from 'varStore.varABL_i_U_netz * varStore.varABL_i_Phase_count' 
+  #undef CALC_SINGLE_VALUES
   
-   if (ABL_rx_status[wb_ix].startsWith("C") && ABL_PauseFlag[wb_ix]==false) // is charging
+   if ((ABL_rx_status[wb_ix].indexOf("C") >= 0) && ABL_PauseFlag[wb_ix]==false) // is charging
    {
       //Serial.printf("WBx:%d status:%s Isum:%2.2f, Ipwm:%d", wb_ix, ABL_rx_status[wb_ix].c_str(), ABL_rx_Isum[wb_ix], ABL_rx_Ipwm[wb_ix]);
-      if ( ABL_rx_Isum[wb_ix] == 0) // virtual I-values: calculation with Watt Values from config-values
+      if (ABL_rx_Isum[wb_ix] == 0) // virtual I-values: calculation with Watt Values from config-values
       {
-           switch (ABL_rx_Ipwm[wb_ix])
-           { 
-            case 6:
-             ABL_rx_kW[wb_ix] = varStore.varABL_i_Watt_06A / 1000.0;
-             break; 
-            case 7:
-             ABL_rx_kW[wb_ix] = varStore.varABL_i_Watt_07A / 1000.0;
-             break;
-            case 8:
-             ABL_rx_kW[wb_ix] = varStore.varABL_i_Watt_08A / 1000.0;
-             break; 
-            case 9:
-             ABL_rx_kW[wb_ix] = varStore.varABL_i_Watt_09A / 1000.0;
-             break;
-            case 10: 
-             ABL_rx_kW[wb_ix]= varStore.varABL_i_Watt_10A / 1000.0;
-             break;  
-            case 11: 
-             ABL_rx_kW[wb_ix]= varStore.varABL_i_Watt_11A / 1000.0;
-             break; 
-            case 12:
-             ABL_rx_kW[wb_ix] = varStore.varABL_i_Watt_12A / 1000.0;
-             break;
-            case 13:
-             ABL_rx_kW[wb_ix] = varStore.varABL_i_Watt_13A / 1000.0;
-             break;
-            case 14:
-             ABL_rx_kW[wb_ix] = varStore.varABL_i_Watt_14A / 1000.0;
-             break;
-            case 15:
-             ABL_rx_kW[wb_ix] = varStore.varABL_i_Watt_15A / 1000.0;
-             break;
-            case 16:
-             ABL_rx_kW[wb_ix] = varStore.varABL_i_Watt_16A / 1000.0;
-             break;
-            default: // use standard for all other values ... or... expand your code ;-)
-             ABL_rx_kW[wb_ix] = (230*2*ABL_rx_Ipwm[wb_ix]) / 1000.0;
-             break;
-           }
-           //Serial.printf(" ABL_rx_kw: %2.2f\r\n", ABL_rx_kW[wb_ix]);
+  #ifdef CALC_SINGLE_VALUES
+        if (wb_ix == 0)
+        {
+          switch (ABL_rx_Ipwm[0])
+          {
+          case 6:
+            ABL_rx_kW[0] = varStore.varABL_i_Watt_06A / 1000.0;
+            break;
+          case 7:
+            ABL_rx_kW[0] = varStore.varABL_i_Watt_07A / 1000.0;
+            break;
+          case 8:
+            ABL_rx_kW[0] = varStore.varABL_i_Watt_08A / 1000.0;
+            break;
+          case 9:
+            ABL_rx_kW[0] = varStore.varABL_i_Watt_09A / 1000.0;
+            break;
+          case 10:
+            ABL_rx_kW[0] = varStore.varABL_i_Watt_10A / 1000.0;
+            break;
+          case 11:
+            ABL_rx_kW[0] = varStore.varABL_i_Watt_11A / 1000.0;
+            break;
+          case 12:
+            ABL_rx_kW[0] = varStore.varABL_i_Watt_12A / 1000.0;
+            break;
+          case 13:
+            ABL_rx_kW[0] = varStore.varABL_i_Watt_13A / 1000.0;
+            break;
+          case 14:
+            ABL_rx_kW[0] = varStore.varABL_i_Watt_14A / 1000.0;
+            break;
+          case 15:
+            ABL_rx_kW[0] = varStore.varABL_i_Watt_15A / 1000.0;
+            break;
+          case 16:
+            ABL_rx_kW[0] = varStore.varABL_i_Watt_16A / 1000.0;
+            break;
+          default: 
+            ABL_rx_kW[0] = 0;
+            break;
+          }
+        }
+        else
+        {
+          switch (ABL_rx_Ipwm[1])
+          {
+          case 6:
+            ABL_rx_kW[1] = varStore.varABL2_i_Watt_06A / 1000.0;
+            break;
+          case 7:
+            ABL_rx_kW[1] = varStore.varABL2_i_Watt_07A / 1000.0;
+            break;
+          case 8:
+            ABL_rx_kW[1] = varStore.varABL2_i_Watt_08A / 1000.0;
+            break;
+          case 9:
+            ABL_rx_kW[1] = varStore.varABL2_i_Watt_09A / 1000.0;
+            break;
+          case 10:
+            ABL_rx_kW[1] = varStore.varABL2_i_Watt_10A / 1000.0;
+            break;
+          case 11:
+            ABL_rx_kW[1] = varStore.varABL2_i_Watt_11A / 1000.0;
+            break;
+          case 12:
+            ABL_rx_kW[1] = varStore.varABL2_i_Watt_12A / 1000.0;
+            break;
+          case 13:
+            ABL_rx_kW[1] = varStore.varABL2_i_Watt_13A / 1000.0;
+            break;
+          case 14:
+            ABL_rx_kW[1] = varStore.varABL2_i_Watt_14A / 1000.0;
+            break;
+          case 15:
+            ABL_rx_kW[1] = varStore.varABL2_i_Watt_15A / 1000.0;
+            break;
+          case 16:
+            ABL_rx_kW[1] = varStore.varABL2_i_Watt_16A / 1000.0;
+            break;
+          default: 
+            ABL_rx_kW[1] = 0;
+            break;
+          }
+        }
+#else
+        // calculate kWh from PhaseCount and U_Netz variables
+        if (ABL_rx_Ipwm[wb_ix] <= 16)
+             {
+              if (wb_ix == 0)
+               {ABL_rx_kW[0] = (varStore.varABL_i_U_netz * varStore.varABL_i_Phase_count * ABL_rx_Ipwm[0]) / 1000.0;}
+#if WB_COUNT == 2
+              else
+               {ABL_rx_kW[1] = (varStore.varABL_i_U_netz * varStore.varABL2_i_Phase_count * ABL_rx_Ipwm[1]) / 1000.0;}
+#endif
+             }
+#endif           
       }
       else // real I-values from ABL
       { 
@@ -854,8 +937,8 @@ void calculate_kWh(uint_fast16_t wb_ix)
       debug_printf("W/h:%d\r\n", ABL_rx_Wh);
       ABL_Wh_Sum_akt[wb_ix] = ABL_Wh_Sum_old[wb_ix] + ABL_rx_Wh[wb_ix];
 
-      sPrint= "\r\n[Calc_C]WB"+ String(wb_ix+1) + " "+ ABL_sChargeTime[wb_ix] + " Wh-akt:" + ABL_rx_Wh[wb_ix]+ " Wh-Sum:" + ABL_Wh_Sum_akt[wb_ix];
-      AsyncWebLog.println(sPrint);
+      //sPrint= "\r\n[Calc_C]WB"+ String(wb_ix+1) + " "+ ABL_sChargeTime[wb_ix] + " Wh-akt:" + ABL_rx_Wh[wb_ix]+ " Wh-Sum:" + ABL_Wh_Sum_akt[wb_ix];
+      AsyncWebLog.printf("[CALC]WB%d %s Wh-akt:%d kW-Sum:%4.3f\r\n",wb_ix+1, ABL_sChargeTime[wb_ix].c_str(),ABL_rx_Wh[wb_ix], float(ABL_Wh_Sum_akt[wb_ix])/1000.0);
 
   }
   else
@@ -872,29 +955,48 @@ void calculate_kWh(uint_fast16_t wb_ix)
 
 // 13.5.26 new: Load-Balance for 2 Wallboxes
 
-
 /// @brief Set Imax with Load-Balance Limits and Modes
 /// @param wb_ix 
 /// @param icmax 
 void setIcmax(uint_fast16_t wb_ix, uint16_t icmax)
 {
   uint16_t imaxOther = 0;
-  ABL_tx_Icmax[wb_ix] = icmax;
-   
-  if (varStore.varABL_i_LoadBal_Mode == 0)
+  if (icmax > varStore.varABL_i_I_limit)
+  {
+    ABL_tx_Icmax[wb_ix] = varStore.varABL_i_I_limit;
+  }
+  else
+  {
+    ABL_tx_Icmax[wb_ix] = icmax;
+  }
+
+  //              PAUSE 
+  // =========================================================
+  if (icmax == 0) 
+  {
+    ABL_tx_Icmax[wb_ix] = 0;
+  }
+  else
+  // varABL_i_LoadBal_mode==0   -->  Load Balance WB01 WB02 50%
+  // =========================================================
+  if (varStore.varABL_i_LoadBal_mode == 0)
   {
     for (size_t i = 0; i < WB_COUNT; i++)
     {
      //debug_printf("[LoadBal 0] calc1 WB0%d Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[i]);
+     //AsyncWebLog.printf("[LoadBal:0] calc1 WB0%d Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[i]);
      if (i != wb_ix)
      {
        imaxOther += ABL_tx_Icmax[i];
-       debug_printf("[LoadBal 0] calc2 WB0%d ImaxOther:%d\r\n",wb_ix+1, imaxOther);
+       AsyncWebLog.printf("[LoadBal:0] calc2 WB%d ImaxOther:%d\r\n",wb_ix+1, imaxOther);
+             debug_printf("[LoadBal:0] calc2 WB%d ImaxOther:%d\r\n",wb_ix+1, imaxOther);
      }
     }
-    debug_printf("[LoadBal 0] set WB0%d ImaxOther:%d\r\n",wb_ix+1, imaxOther);
+    
+    AsyncWebLog.printf("[LoadBal:0] set WB%d ImaxOther:%d\r\n",wb_ix+1, imaxOther);
+          debug_printf("[LoadBal:0] set WB%d ImaxOther:%d\r\n",wb_ix+1, imaxOther);
 
-    if (icmax > (varStore.varABL_i_LoadBal_Imax - imaxOther))
+    if (icmax > (varStore.varABL_i_I_limit - imaxOther))
     {
       // Möglichkeit A: Rest ist nur noch verfügbar
       //ABL_tx_Icmax[wb_ix] = varStore.varABL_i_LoadBal_Imax - imaxFree;
@@ -902,52 +1004,87 @@ void setIcmax(uint_fast16_t wb_ix, uint16_t icmax)
       // Möglichkeit B: 50% Aufteilung --> z.Z. realisiert !
       for (size_t i = 0; i < WB_COUNT; i++)
       {
-        ABL_tx_Icmax[i] = varStore.varABL_i_LoadBal_Imax / 2;
+        ABL_tx_Icmax[i] = varStore.varABL_i_I_limit / 2;
+        ABL_tx_status[i] = SET_Current;
       }
       
-      debug_printf("[LoadBal 0] L I M I T ! WB0%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]);
-      AsyncWebLog.println("[LoadBal] Mode=0 LIMIT! Icmax!");
+      debug_printf("[LoadBal 0] L I M I T ! WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]);
+      AsyncWebLog.printf("[LoadBal:0] L I M I T ! WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]);
     }
     else
     {
-      debug_printf("[LoadBal Mode:0] no limit WB0%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]); 
+      debug_printf("[LoadBal Mode:0] NO LIMIT WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]); 
+      AsyncWebLog.printf("[LoadBal Mode:0] no limit WB0%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]); 
     }
   }
-  else if (icmax > 0)
+   // varABL_i_LoadBal_mode == 1  -> WB01=ON WB02=PAUSE
+   // =================================================
+  else if ((varStore.varABL_i_LoadBal_mode == 1) && (wb_ix == 0))
   {
-   // Prio WB1
-   if ((varStore.varABL_i_LoadBal_Mode == 1) && (wb_ix == 0))
-   {
      ABL_tx_Icmax[1]  = 0;
      ABL_PauseFlag[1] = true;
-     debug_printf("[LoadBal Mode:1] Prio WB01\r\n");
+     ABL_tx_status[1] = SET_Current;
+           debug_printf("[LoadBal:1] Prio WB1\r\n");
+     AsyncWebLog.printf("[LoadBal:1] Prio WB1\r\n");
    }
-   else
-   // Prio WB2
-   if ((varStore.varABL_i_LoadBal_Mode == 2) && (wb_ix == 1))
+
+   else if ((varStore.varABL_i_LoadBal_mode == 2) && (wb_ix == 1))
+   // varABL_i_LoadBal_mode == 1  -> WB01=ON WB02=PAUSE
+   // =================================================
+   if ((varStore.varABL_i_LoadBal_mode == 2) && (wb_ix == 1))
    {
      ABL_tx_Icmax[0]  = 0;
      ABL_PauseFlag[0] = true;
-     debug_printf("[LoadBal Mode:2] Prio WB02\r\n");
+     ABL_tx_status[0] = SET_Current;
+           debug_printf("[LoadBal:2] Prio WB2\r\n");
+     AsyncWebLog.printf("[LoadBal:2] Prio WB2\r\n");
    }
- }
 
  forcePolling();
+ ABL_tx_status[wb_ix] = SET_Current;
+
 }
 
 
+/// @brief Read actual Icmax
+/// @param wb_ix 
+/// @return 
 uint16_t getIcmax(uint_fast16_t wb_ix)
 {
-  if ((ABL_tx_Icmax[0] + ABL_tx_Icmax[1]) > varStore.varABL_i_LoadBal_Imax)
+  if ((ABL_tx_Icmax[0] + ABL_tx_Icmax[1]) > varStore.varABL_i_I_limit)
   {
     return 8;
   }
-  if (ABL_tx_Icmax[wb_ix] > varStore.varABL_i_LoadBal_Imax)
+  if (ABL_tx_Icmax[wb_ix] > varStore.varABL_i_I_limit)
   {
-    return varStore.varABL_i_LoadBal_Imax;
+    return varStore.varABL_i_I_limit;
   }
   
   return ABL_tx_Icmax[wb_ix];
+}
+
+/// @brief 
+/// @param wb_ix 
+/// @param iwatt  in Watt NOT kW !!
+void setPmax(uint_fast16_t wb_ix, uint16_t iwatt)
+{
+   uint nPhase = varStore.varABL_i_Phase_count;
+   uint ILimit = varStore.varABL_i_I_limit;
+   if (wb_ix == 1)
+   {
+     nPhase = varStore.varABL2_i_Phase_count;
+   }
+   uint16_t iAmpere = round(iwatt / (nPhase * varStore.varABL_i_U_netz));
+   if (iAmpere > ILimit)
+   {
+     iAmpere= ILimit;
+     AsyncWebLog.printf("[SetPmax] Warning: LIMIT-I:%d WB%d P:%dW I:%dA\r\n",ILimit, wb_ix+1, iwatt, iAmpere);   
+   }
+   else
+   {
+     AsyncWebLog.printf("[SetPmax]WB%d P:%dW I:%dA\r\n", wb_ix+1, iwatt, iAmpere);
+   }
+   setIcmax(wb_ix, iAmpere);
 }
 
 
@@ -985,6 +1122,7 @@ void ABL_Send(uint8_t wb_ix,  ABL_POLL_STATUS s)
  switch (s)
  {
   case POLL_Current:
+    ABL_forcePollFlag[wb_ix] = 0;
     tx = String(ABL_TX_MSG[ABL_TX_MSG_INDEX::TX_POLL + msg_ix_offset]);
   break;
 
@@ -1059,7 +1197,7 @@ void ABL_Send(uint8_t wb_ix,  ABL_POLL_STATUS s)
   break;
  } // end of swtich(s) --> ABL_POLL_STATUS
 
- AsyncWebLog.println("TX" + tx);
+ AsyncWebLog.printf("TX%s\r\n", tx.c_str());
  debug_printf("TX %s\r\n",tx.c_str());
  digitalWrite(ABL_RX_LOW_ENABLE_GPIO,1);
  for (int i =0; i< tx.length(); i++)
@@ -1071,11 +1209,13 @@ void ABL_Send(uint8_t wb_ix,  ABL_POLL_STATUS s)
  digitalWrite(ABL_RX_LOW_ENABLE_GPIO, 0); // Switch from TX to RX
  delay(1000);
  // empty the first rx input because of possible trash after first ABL-wakeup call
- while (Serial_ABL.available()) 
+
+ while (Serial_ABL.available() > 0) 
  {
     // cppcheck-suppress unreadVariable
     char inChar = (char)Serial_ABL.read();
  }
+ 
  // send 2x for wakeup from sleep
  digitalWrite(ABL_RX_LOW_ENABLE_GPIO,1); // Switch form Rx to TX
  for (int i =0; i< tx.length(); i++)
@@ -1084,7 +1224,6 @@ void ABL_Send(uint8_t wb_ix,  ABL_POLL_STATUS s)
  }
  Serial_ABL.write("\r\n");
  Serial_ABL.flush(true);
-
  digitalWrite(ABL_RX_LOW_ENABLE_GPIO, 0); // switch from Tx to Rx
 }
 
@@ -1119,27 +1258,34 @@ cnt:               0      1         2          3 4  5 6  7 8
 */
   bool ret = false;
   uint_fast16_t wb_ix = 0;
-  String sLog = "RX"; sLog+= s;
-  AsyncWebLog.print(sLog);
+  //String sLog = "";
+  //sLog.reserve(250);
+  AsyncWebLog.printf("RX%s", s.c_str());
   
-  if (s.startsWith("01",1))
+  if (s.startsWith(">0",0))
   {
+   if (s.startsWith("01",1))
+   {
      wb_ix = 0;
-     //debug_println("RX01");
-  }
-  if (s.startsWith("02",1))
-  {
+   }
+   if (s.startsWith("02",1))
+   {
     wb_ix = 1;
-    //debug_println("Rx02");
+   }
+  }
+  else
+  {
+    AsyncWebLog.printf("[RX  ]Parse **START-UNVALID!\r\n");
+    ABL_rx_status[wb_ix] = ABL_STATUS_STRING[ABL_UNVALID];
+    return false;
   }
 
-  if         (s.indexOf("03A02E") && s.length()>=28)
-  //if (s.startsWith(">01030A2E") && s.length()>=28 )  // 2E = Read current (full)
+
+  if(s.indexOf("03A02E") && s.length()>=28)
   {
-       String sLog = "";
-       sLog.reserve(250);
-       sLog = "\r\nStatus:" + s.substring(9,11)+ " Ipwm:" + s.substring(13,15) + " I1:" + s.substring(15,19) +  + " I2:" + s.substring(19,23) + " I3:" + s.substring(23,27);
-       AsyncWebLog.println(sLog);  
+     
+       //sLog = "\r\nStatus:" + s.substring(9,11)+ " Ipwm:" + s.substring(13,15) + " I1:" + s.substring(15,19) +  + " I2:" + s.substring(19,23) + " I3:" + s.substring(23,27);
+       //AsyncWebLog.println(sLog);  
        ABL_rx_status[wb_ix] = s.substring(9,11);
        try
        {
@@ -1160,15 +1306,15 @@ cnt:               0      1         2          3 4  5 6  7 8
          
          ABL_rx_Isum[wb_ix] = (i1 +i2 + i3) / 10;
          
-         sLog = "Ipwm"+ String(ABL_rx_Ipwm[wb_ix])+  " I="+ String(i1/10.0)+ "+" + String(i2/10.0) +"+" +String(i3/10.0) +"+ Isum="+ String(ABL_rx_Isum[wb_ix])  + " \r\n";
-         AsyncWebLog.println(sLog);
+         //sLog = "WB" + String(wb_ix+1) + " state:" + ABL_rx_status[wb_ix] + " Ipwm:"+ String(ABL_rx_Ipwm[wb_ix])+  " I:"+ String(i1/10.0)+ "+" + String(i2/10.0) +"+" +String(i3/10.0) +"=Isum:"+ String(ABL_rx_Isum[wb_ix]);
+         AsyncWebLog.printf("[RX  ]WB%d Parser Status:%s, Ipwm:%d, Isum:%3.2f\r\n",wb_ix+1,ABL_rx_status[wb_ix].c_str(), ABL_rx_Ipwm[wb_ix], ABL_rx_Isum[wb_ix]);
          ret = true;
-      
+    
        }
        catch(const std::exception& e)
        {
          ABL_rx_Isum[wb_ix] = 0;
-         AsyncWebLog.println("*Exeption*");
+         AsyncWebLog.printf("[RX  ]WB%d Parser**Exeption!\r\n", wb_ix+1);
        }   
   }
   else
@@ -1176,7 +1322,7 @@ cnt:               0      1         2          3 4  5 6  7 8
   //if (s.startsWith(">011000140001DA")) // 14 = set Imax OK (duty cycle)
   {
     // >011000140001DA
-    AsyncWebLog.println("*RX Set-Imax OK*");
+    AsyncWebLog.printf("[RX  ]WB%d Parser Set-Imax OK\r\n", wb_ix+1);
     ABL_tx_status[wb_ix] = POLL_Current;  // next Command
     forcePolling();
   }
@@ -1187,8 +1333,9 @@ cnt:               0      1         2          3 4  5 6  7 8
   //}
   else
   {
-    AsyncWebLog.println("*RX-UNVALID!");
+    AsyncWebLog.printf("[RX  ]WB%d Parser **UNVALID!\r\n", wb_ix+1);
     ABL_rx_status[wb_ix] = ABL_STATUS_STRING[ABL_UNVALID];
+    ret = false;
   }
 
   ABL_rx_String = "";
@@ -1199,9 +1346,11 @@ cnt:               0      1         2          3 4  5 6  7 8
 
 void serialEventABL() 
 {
-    while (Serial_ABL.available()) 
+    static char inChar;
+    while (Serial_ABL.available() > 0) 
     {
-     char inChar = (char)Serial_ABL.read();
+     delay(20);
+     inChar = (char)Serial_ABL.read();
      ABL_rx_String += inChar;
      debug_print(inChar);
      if (inChar == '\n') 
@@ -1217,7 +1366,7 @@ void serialEventABL()
          {ABL_rx_timeoutcount[1] = 0;}
       }
       ABL_rx_String = "";
-      //delay(1000);
+      //delay(100);
       //setLED(0); // LED off
     }
    } // while
@@ -1264,7 +1413,8 @@ void initWifi(bool bSetAP)
    {
     debug_println("WIFI:AP-Mode");
     varStore.varWIFI_s_Mode = "AP";
-    WiFi.softAP("ESP_ABL_AP");   
+
+    WiFi.softAP("ESP_ABL_AP",varStore.varWIFI_s_Password.c_str());   
     debug_print("IP Address: ");
     SYS_IP = WiFi.softAPIP().toString();
     debug_println(SYS_IP);
@@ -1284,7 +1434,7 @@ void initWifi(bool bSetAP)
     wifiStatus = WiFi.begin(varStore.varWIFI_s_SSID.c_str(), varStore.varWIFI_s_Password.c_str());
     delay(500);
     int i = 0;
-    Serial.printf("SSID:%s\r\n", varStore.varWIFI_s_SSID);
+    Serial.printf("SSID:%s\r\n", varStore.varWIFI_s_SSID.c_str());
     ///debug_printf("Passwort:%s\r\n", varStore.varWIFI_s_Password);
     while ((WiFi.waitForConnectResult() != WL_CONNECTED) && (i < 20))
     {
@@ -1306,8 +1456,8 @@ void initWifi(bool bSetAP)
     else
     {
       WiFi.disconnect(false, true);
-      debug_printf("\r\n******** no valid login to:'%s' *******************************\r\n", varStore.varWIFI_s_SSID.c_str());
-      debug_printf(    "******** connect to local AP:'ESP_ABL_AP' IP: 192.168.4.1 *****\r\n")
+      Serial.printf("\r\n******** no valid login to:'%s' *******************************\r\n", varStore.varWIFI_s_SSID.c_str());
+      Serial.printf(    "******** connect to local AP:'ESP_ABL_AP' IP: 192.168.4.1 *****\r\n");
       varStore.varWIFI_s_Mode = "AP";
       WiFi.mode(WIFI_AP);
       WiFi.softAP("ESP_ABL_AP", NULL, 6, 0, 4,false);
@@ -1324,27 +1474,44 @@ void initWifi(bool bSetAP)
 //////////////////////////////////////////
 /// @brief Manage the Wifi Connection
 /////////////////////////////////////////
-void handleWifiConnection() 
+void testWifiConnection() 
 {
     if (varStore.varWIFI_s_Mode == "STA")
-    {debug_printf("WiFi Mode:STA IP:%s\r\n", WiFi.localIP().toString());}
-    else
-    {debug_printf("WiFi Mode:AP IP:%s\r\n", WiFi.softAPIP().toString());}
-    // Test if wifi is lost from router
-    if ((varStore.varWIFI_s_Mode == "STA") && (WiFi.status() != WL_CONNECTED))
     {
-        delay(200);
-        if (WiFi.reconnect()==false)
-        {
-          saveHistory();
-          WiFi.reconnect();
-          Serial.println("*** RESTART ***");
-          hist.putInt("restart",SYS_RestartCount++);
-          delay(1000);
-          ESP.restart();
-        }
-       
+      debug_printf("[WiFi] Mode:STA IP:%s RSSI:%d\r\n", WiFi.localIP().toString().c_str(), WiFi.RSSI());
+      if  (WiFi.status() != WL_CONNECTED)
+      {
+        // Force reconnect without freezing the main loop execution
+        SYS_RestartCount++;
+        hist.putInt("restart",SYS_RestartCount);
+        WiFi.disconnect();
+        WiFi.begin(varStore.varWIFI_s_SSID, varStore.varWIFI_s_Password);
+      }
+
+      // V2.1 new: optional extra test with ping to GatewayIP   
+#ifdef PINGTEST
+      if (Ping.ping(WiFi.gatewayIP(),1) > 0)
+      {
+       debug_printf("[PING ] response time : %d/%.2f/%d ms\r\n", Ping.minTime(), Ping.averageTime(), Ping.maxTime());
+       AsyncWebLog.printf("[PING ] response: %d ms\r\n", Ping.minTime());
+      } 
+      else 
+      {
+       debug_println(" Ping Error !");
+       SYS_RestartCount++;
+       hist.putInt("restart",SYS_RestartCount);
+       WiFi.disconnect();
+       WiFi.begin(varStore.varWIFI_s_SSID, varStore.varWIFI_s_Password);
+      }
+#endif
+    }   
+    else
+    {
+      // remove debug log of Passwort if you dont want to show it in log !
+      debug_printf("[WiFi] Mode:AP IP:%s Password:%s\r\n", WiFi.softAPIP().toString().c_str(), varStore.varWIFI_s_Password.c_str());
     }
+    // Test if wifi is lost from router
+ 
 }
 
 static String readString(File s) 
@@ -1453,17 +1620,18 @@ String setHtmlVar(const String& var)
 #endif // WITHOUT_TEMP
   
      return   "Version     :"   + SYS_Version + 
-            "\nBuild       :" + SYS_CompileTime + 
+            "\nBuild       :" + SYS_CompileDate + " "+ SYS_CompileTime + 
             "\nPlatform    :" + ESP.getChipModel() +
             "\nTemp(C)     :" + temp +
             "\nIP-Addr     :" + SYS_IP +
             "\nRestart-Cnt :" + SYS_RestartCount + 
             "\nRSSI        :" + String(WiFi.RSSI()) + 
-            
-            "\nLoadBal-Mode:" + String(varStore.varABL_i_LoadBal_Mode) +
-            "\nLoadBal-Isum:" + String(varStore.varABL_i_LoadBal_Imax) +
-            "\nPhase-Count :" + String(varStore.varABL_i_PhaseCount) + 
-            
+  #if WB_COUNT == 2          
+            "\nLoadBal-Mode:" + String(varStore.varABL_i_LoadBal_mode) +
+            "\nLoadBal-Isum:" + String(varStore.varABL_i_I_limit) +
+            "\nPhase-Count :" + String(varStore.varABL_i_Phase_count) + 
+            "\nPhase-Count2:" + String(varStore.varABL2_i_Phase_count) + 
+        
             "\nTimeoutCnt01:" + ABL_rx_timeoutcount[0] +
             "\nTimeoutCnt02:" + ABL_rx_timeoutcount[1] + 
             "\nChargeCnt01 :" + SYS_ChargeCount[0] + 
@@ -1473,18 +1641,73 @@ String setHtmlVar(const String& var)
             "\nIpwm02      :" + String(ABL_rx_Ipwm[1]) + 
             "\nStatus1     :" + ABL_rx_status[0] +
             "\nStatus2     :" + ABL_rx_status[1];
+  #else 
+                    
+            "\nPhase-Count :" + String(varStore.varABL_i_Phase_count) + 
+            "\nTimeoutCnt  :" + ABL_rx_timeoutcount[0] +
+            "\nChargeCnt   :" + SYS_ChargeCount[0] + 
+            "\nIpwm        :" + String(ABL_rx_Ipwm[0]) + 
+            "\nStatus      :" + ABL_rx_status[0];
+  #endif
+
   }
   else
   if (var == "IMAX")
   {
+     
+     if (ABL_PauseFlag[0] == false)
+     {
+       ABL_tx_Icmax[0] = ABL_rx_Ipwm[0];
+     }
      return String(ABL_tx_Icmax[0]);
   }
   else
   if (var == "IMAX2")
   {
+     if (ABL_PauseFlag[1] == false)
+     {
+       ABL_tx_Icmax[1] = ABL_rx_Ipwm[1];
+     }
      return String(ABL_tx_Icmax[1]);
+    
   }
-     
+  else 
+  if (var == "ILIMIT")
+  {
+    return String(varStore.varABL_i_I_limit);
+  }
+  else 
+  if (var == "UGRID")
+  {
+    return String(varStore.varABL_i_U_netz);
+  }
+  else 
+  if (var == "NPHASE")
+  {
+    return String(varStore.varABL_i_Phase_count);
+  }
+  if (var == "NPHASE2")
+  {
+    return String(varStore.varABL2_i_Phase_count);
+  }
+   else 
+  if (var == "PMAX")
+  {
+     if (ABL_PauseFlag[0] == false)
+     {
+       ABL_tx_Icmax[0] = ABL_rx_Ipwm[0];
+     }
+    return String(round((varStore.varABL_i_Phase_count * varStore.varABL_i_U_netz * ABL_tx_Icmax[0])/1000));
+  }
+  if (var == "PMAX2")
+  {
+     if (ABL_PauseFlag[1] == false)
+     {
+       ABL_tx_Icmax[1] = ABL_rx_Ipwm[1];
+     }
+    return String(round((varStore.varABL2_i_Phase_count * varStore.varABL_i_U_netz * ABL_tx_Icmax[1])/1000));
+  }
+    
   return String();
 }
 
@@ -1506,8 +1729,6 @@ void Handle_Index_Post(AsyncWebServerRequest *request)
      //ABL_Send("high");
      //ABL_tx_Icmax[0] = varStore.varABL_i_A_soll_high;
      setIcmax(0, varStore.varABL_i_A_soll_high);
-     ABL_tx_status[0] = SET_Current;
-
      AsyncWebLog.println("SET-Current WB1:" + String(ABL_tx_Icmax[0]) + "A");
    }
    else
@@ -1516,7 +1737,6 @@ void Handle_Index_Post(AsyncWebServerRequest *request)
        //sRet = ABL_Send("low");
        //ABL_tx_Icmax[0] = varStore.varABL_i_A_soll_low;
        setIcmax(0, varStore.varABL_i_A_soll_low);
-       ABL_tx_status[0] = SET_Current;
        AsyncWebLog.println("SET-Current WB1:" + String(ABL_tx_Icmax[0]) + "A");
    }
    else
@@ -1524,9 +1744,7 @@ void Handle_Index_Post(AsyncWebServerRequest *request)
    {
        //sRet = ABL_Send("low");
        //ABL_tx_Icmax[0] = 0;
-       setIcmax(0, 0);
-       ABL_tx_status[0] = SET_Current;
-      
+       setIcmax(0, 0);    
        AsyncWebLog.println("CHARGE-PAUSE WB1");
     }
 
@@ -1537,7 +1755,6 @@ void Handle_Index_Post(AsyncWebServerRequest *request)
      wb_ix_local = 1;
      //ABL_tx_Icmax[1] = varStore.varABL_i_A_soll_high;
      setIcmax(1, varStore.varABL_i_A_soll_high);
-     ABL_tx_status[1] = SET_Current;
      AsyncWebLog.println("SET-Current WB2:" + String(ABL_tx_Icmax[1]) + "A");
    }
    else
@@ -1547,17 +1764,14 @@ void Handle_Index_Post(AsyncWebServerRequest *request)
        wb_ix_local = 1;
        //ABL_tx_Icmax[1] = (int)varStore.varABL_i_A_soll_low;
        setIcmax(1, varStore.varABL_i_A_soll_low);
-       ABL_tx_status[1] = SET_Current;
-      AsyncWebLog.println("SET-Current WB2:" + String(ABL_tx_Icmax[1]) + "A");
+       AsyncWebLog.println("SET-Current WB2:" + String(ABL_tx_Icmax[1]) + "A");
    }
    else
    if (request->argName(0) == "pause2")
    {
        //sRet = ABL_Send("low");
        wb_ix_local = 1;
-       //ABL_tx_Icmax[1] = 0;
        setIcmax(1, 0);
-       ABL_tx_status[1] = SET_Current;
        AsyncWebLog.println("CHARGE-PAUSE WB2");
     }
    
@@ -1631,14 +1845,14 @@ void initWebServer()
 
   // > Version V1.2
   //Route for stored values
-  server.on("/setcurrent.html",          HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/setpower.html",          HTTP_GET, [](AsyncWebServerRequest *request)
   {
-   request->send(SPIFFS, "/setcurrent.html", String(), false, setHtmlVar);
+   request->send(SPIFFS, "/setpower.html", String(), false, setHtmlVar);
   });
 
-  server.on("/setcurrent2.html",          HTTP_GET, [](AsyncWebServerRequest *request)
+  server.on("/setpower2.html",          HTTP_GET, [](AsyncWebServerRequest *request)
   {
-   request->send(SPIFFS, "/setcurrent2.html", String(), false, setHtmlVar);
+   request->send(SPIFFS, "/setpower2.html", String(), false, setHtmlVar);
   });
   
   //Route for setup web page
@@ -1683,31 +1897,37 @@ void initWebServer()
     // fetch is also used for setting Imax with URL-Variable
     // example: 
     // http://<your-ip>/fetch?imax=8 --> set Imax to 8A
+    // http://<your-ip>/fetch?pmax=3000 --> set Pmax to 3kW
     //
-    // valid values: imax=0..6..8..10..12..14..15..16 
+    // valid values: imax=0...6-16 
     // specal case imax=0 --> Pause charging
     if (request->args() > 0)
     {
-    debug_println("GET-Argument: " + request->argName(0));
-    debug_print("Value: ");
-    uint8_t i = 0;
-    String s  = request->arg(i);
-    debug_println(s);
-    if (request->argName(0) == "imax")
-    {
+     debug_println("GET-Argument: " + request->argName(0));
+     debug_print("Value: ");
+     uint8_t i = 0;
+     String s  = request->arg(i);
+     debug_println(s);
+     if (request->argName(0) == "imax")
+     {
+        uint a = String(request->arg(i)).toInt();
+        AsyncWebLog.println("SET-Imax WB01:" + String(a)+ "A");
+        if ((a >=6 && a <=16) || (a==0))
+        {
+            setIcmax(0,a);
+        }
+        else
+        {
+         AsyncWebLog.println("[fetch] **ERROR Imax WB01 out of range!");
+        }
+     }
+     else if (request->argName(0) == "pmax")
+     {
        uint a = String(request->arg(i)).toInt();
-       AsyncWebLog.println("GET-SET-Imax WB1:" + String(a)+ "A");
-       if ((a >=6 && a <=16) || (a==0))
-       {
-           //ABL_tx_Icmax[0] = a;
-           setIcmax(0,a);
-           ABL_tx_status[0] = SET_Current; // next Send Protocol
-       }
-       else
-       {
-        AsyncWebLog.println("**ERROR Imax WB01 out of range!");
-       }
-    }
+       AsyncWebLog.printf("[fetch] SET-Pmax WB01: %dWatt\r\n",a);
+       setPmax(0,a);
+       ABL_tx_status[0] = SET_Current; // next Send Protocol
+     }
     }
     
     String sStatus;
@@ -1721,7 +1941,8 @@ void initWebServer()
     String s = String(ABL_rx_Ipwm[0])+',' + String(ABL_rx_kW[0]) + ','+ sStatus+ ',' + String(ABL_rx_Wh[0]/1000.0) + ',' + String(ABL_Wh_Sum_akt[0]) + ',' +String(ABL_sChargeTime[0]);
     request->send(200, "text/plain", s);
     //debug_println("server.on /fetch: "+ s);
-  });
+
+});
 
   // fetch GET
   server.on("/fetch2", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -1731,30 +1952,35 @@ void initWebServer()
     // example: 
     // http://<your-ip>/fetch?imax=8 --> set Imax to 8A
     //
-    // valid values: imax=0 6 7 8 9 10 11 12 13 14 15 16 
+    // valid values: imax=0..6-16 
     // specal case imax=0 --> Pause charging
     if (request->args() > 0)
     {
-    debug_println("GET-Argument: " + request->argName(0));
-    debug_print("Value: ");
-    uint8_t i = 0;
-    String s  = request->arg(i);
-    debug_println(s);
-    if (request->argName(0) == "imax")
-    {
+     debug_println("GET-Argument: " + request->argName(0));
+     debug_print("Value: ");
+     uint8_t i = 0;
+     String s  = request->arg(i);
+     debug_println(s);
+     if (request->argName(0) == "imax")
+     {
        uint a = String(request->arg(i)).toInt();
-       AsyncWebLog.println("GET-SET-Imax WB2:" + String(a)+ "A");
+       AsyncWebLog.println("SET-Imax WB02:" + String(a)+ "A");
        if ((a >=6 && a <=16) || (a==0))
        {
-           //ABL_tx_Icmax[1] = a;
            setIcmax(1,a);
-           ABL_tx_status[1] = SET_Current; // next Send Protocol
        }
        else
        {
         AsyncWebLog.println("**ERROR Imax WB02 out of range!");
        }
-    }
+     }
+     else if (request->argName(0) == "pmax")
+     {
+       uint a = String(request->arg(i)).toInt();
+       AsyncWebLog.printf("SET-Pmax WB02: %dWatt\r\n",a);
+       setPmax(1,a);
+     }
+
     }
     
     String sStatus;
@@ -1768,7 +1994,8 @@ void initWebServer()
     String s = String(ABL_rx_Ipwm[1])+',' + String(ABL_rx_kW[1]) + ','+ sStatus + ',' + String((ABL_rx_Wh[1])/1000.0) + ',' + String(ABL_Wh_Sum_akt[1]) + ',' +String(ABL_sChargeTime[1]);
     debug_println("server.on /fetch2: "+ s);
     request->send(200, "text/plain", s);
-  });
+  }
+);
  
   // fetch GET
   server.on("/fetchjson", HTTP_GET, [](AsyncWebServerRequest *request)
@@ -1790,8 +2017,6 @@ void initWebServer()
   // fetch GET
   server.on("/fetchkv", HTTP_GET, [](AsyncWebServerRequest *request)
   {
-    // z.Z. nur für Wallbox-01
-    const uint_fast16_t wb_ix = 0;
     String s = "Imax=" + String(ABL_rx_Ipwm[0]) + " A \n" + 
                "ActPower=" + String(ABL_rx_kW[0]) + " kW\n" +
                "Status=" + String(ABL_rx_status[0]) + "\n" +
@@ -1806,7 +2031,6 @@ void initWebServer()
   server.on("/fetchkv2", HTTP_GET, [](AsyncWebServerRequest *request)
   {
     // Wallbox-02
-    const uint_fast16_t wb_ix = 0;
     String s = "Imax=" + String(ABL_rx_Ipwm[1]) + " A \n" + 
                "ActPower=" + String(ABL_rx_kW[1]) + " kW\n" +
                "Status=" + String(ABL_rx_status[1]) + "\n" +
@@ -1825,8 +2049,6 @@ void initWebServer()
   // config.txt GET
   server.on("/reboot.html", HTTP_GET, [](AsyncWebServerRequest *request)
   {
-   
-
     #if WB_COUNT == 2
       request->send(200, "text/html", "<a href='/index1.html'>START</a>");
 #else
@@ -1909,14 +2131,14 @@ void initWebServer()
   
   // > Version V1.2 set current in extra page
   // index.html POST
-  server.on("/setcurrent.html",          HTTP_POST, [](AsyncWebServerRequest *request)
+  server.on("/setpower.html",          HTTP_POST, [](AsyncWebServerRequest *request)
   {
     Handle_Index_Post(request);
   });
   
    // > Version V1.2 set current in extra page
   // index.html POST
-  server.on("/setcurrent2.html",          HTTP_POST, [](AsyncWebServerRequest *request)
+  server.on("/setpower2.html",          HTTP_POST, [](AsyncWebServerRequest *request)
   {
     Handle_Index_Post(request);
   });
@@ -1971,31 +2193,6 @@ void initWebServer()
       
    request->send(SPIFFS, "/setvalues.html", String(), false, setHtmlVar);
   });
-  
-  
-   /*
-   // Send a GET request to <IP>/get?message=<message>
-  server.on("/get", HTTP_GET, [] (AsyncWebServerRequest *request) {
-        String message;
-        if (request->hasParam(PARAM_MESSAGE)) {
-            message = request->getParam(PARAM_MESSAGE)->value();
-        } else  // Serious problem{
-            message = "No message sent";
-        }
-        request->send(200, "text/plain", "Return Value from GET: " + message);
-  });
-
-  // Send a POST request to <IP>/post with a form field message set to <message>
-  server.on("/post", HTTP_POST, [](AsyncWebServerRequest *request){
-        String message;
-        if (request->hasParam(PARAM_MESSAGE, true)) {
-            message = request->getParam(PARAM_MESSAGE, true)->value();
-        } else {
-            message = "No message sent";
-        }
-        request->send(200, "text/plain", "Hello, POST: " + message);
-  });
-  */
 
   
   server.onNotFound(notFound);
@@ -2050,30 +2247,46 @@ void setup()
 }
 
 
+void set_tmp_poll_time_ms()
+{
+  if (ABL_forcePollFlag[0])
+    {
+      tmp_poll_time_ms = 2500;
+      return;
+    }
+#if WB_COUNT == 2
+    else
+    if (ABL_forcePollFlag[1])
+    {
+      tmp_poll_time_ms = 2500;
+      return;
+    }
+#endif
+   
+#if WB_COUNT == 2
+    if ((ABL_rx_status[0].indexOf('A') >= 0) && (ABL_rx_status[1].indexOf('A') >= 0))
+#else 
+    if ((ABL_rx_status[0].indexOf('A') >= 0))
+#endif
+    { 
+      tmp_poll_time_ms = varStore.varABL_i_Scantime_ms;} // value > 30sec reduces standby power 
+    else
+    {
+       tmp_poll_time_ms = 5000;
+    }
+     
+}
+
+
+static uint_fast16_t last_wb_poll_ix = 0;
+static int main_iBlink;
 void loop()
 {
-    static uint_fast16_t last_wb_poll_ix = 0;
-    static String s;
-    static int iBlink;
+    set_tmp_poll_time_ms();
 
-
-    for (size_t i = 0; i < WB_COUNT; i++)
-    { 
-       if (forcePollFlag[i])
-       {
-          tmp_poll_time_ms = 0;      // fast polling after change of current
-          //AsyncWebLog.println("Set Poll-Time:1");
-       }
-       else if (ABL_rx_status[i].startsWith("C"))
-       { tmp_poll_time_ms = 5000;}  // while charging 5sec polling.
-       else
-       { tmp_poll_time_ms = varStore.varABL_i_Scantime_ms;} // value > 30sec reduces standby power 
-    }
-    
     if (millis() > (ABL_PollTime_old + tmp_poll_time_ms))
     {
-      String slog = "Poll-Time:" + String(tmp_poll_time_ms);
-      AsyncWebLog.println(slog);
+      AsyncWebLog.printf("[Poll] Time:%dms\r\n", tmp_poll_time_ms);
   #if WB_COUNT == 2
       if (last_wb_poll_ix >= WB_COUNT-1)
       {last_wb_poll_ix = 0;}
@@ -2083,20 +2296,27 @@ void loop()
       last_wb_poll_ix = 0;
   #endif
 
-      forcePollFlag[last_wb_poll_ix] = false;
+      // jetzt in ABL_Send !
+      //ABL_forcePollFlag[last_wb_poll_ix] = false;
       ABL_PollTime_old  = millis();
       log_timer = tmp_poll_time_ms / 1000;
       ABL_Send(last_wb_poll_ix,ABL_tx_status[last_wb_poll_ix]);
       testTimeount(last_wb_poll_ix); 
+    
+
+      // Test Network connection
+#ifdef USE_ETH_INSTEAD_WIFI
+      testEthernetConnection();
+#else
+      testWifiConnection();
+#endif
     }
-
-    serialEventABL();
-
+    else
     if (millis() - varStore.varABL_i_logtime_ms > ABL_StatusSec_old)
     { 
       //calculate_kWh(last_wb_poll_ix);
-      setLED(iBlink%2);
-      iBlink++;
+      setLED(main_iBlink%2);
+      main_iBlink++;
       ABL_StatusSec_old = millis();
 
       for (size_t i = 0; i < WB_COUNT; i++)
@@ -2108,20 +2328,24 @@ void loop()
       {log_timer--;}
       else
       {log_timer = tmp_poll_time_ms / 1000;}
-    
-      s = "[Poll  ]WB"+ String(last_wb_poll_ix+1) + " next Tx sec:" + String(log_timer);
-      AsyncWebLog.println(s);
-      debug_println(s);
-
-#ifdef USE_ETH_INSTEAD_WIFI
-      handleEthernetConnection();
+#if WB_COUNT == 2         
+      uint8_t ii= 0;
+      if (last_wb_poll_ix == 0)
+      {ii=1;}
+      AsyncWebLog.printf("[Poll]WB%d next Tx sec:%d\r\n",ii+1, log_timer);
+            debug_printf("[Poll]WB%d next Tx sec:%d\r\n",ii, log_timer);
 #else
-      handleWifiConnection();
+       AsyncWebLog.printf("[Poll] next Tx sec:%d\r\n",log_timer);
+             debug_printf("[Poll] next Tx sec:%d\r\n",log_timer);
 #endif
+    }
+    else
+    {
+       serialEventABL();
     }
 #ifdef MQTT_ENABLE
     mqtt_loop();
 #endif  
-   delay(1);            
+   delay(1);
+  
 }
-

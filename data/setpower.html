@@ -1,0 +1,196 @@
+<!DOCTYPE HTML>
+<html>
+
+    <head>
+        <title>%DEVICEID%</title>
+        <meta content="width=device-width, initial-scale=0.90, user-scalable=yes" name="viewport">
+        <link rel="stylesheet" type="text/css" href="style.css">
+        <meta charset="UTF-8">
+        <meta name="mobile-web-app-capable" content="yes">
+        <meta name="theme-color" content="#ffffff">
+    </head>
+
+    <body >
+         <h2>%DEVICEID%</h2>
+
+     <div class="outer_frame">
+         <h2>Set Current  [A]</h2>
+         </p>
+         <p><form action="" method="POST" >
+          <input class="buttonred" name="ihigh" type="submit" value="%I-HIGH%">
+         </form></p>
+         <p><form action="" method="POST" >
+          <input class="buttongreen" name="ilow" type="submit" value="%I-LOW%">
+         </form></p>
+         </p>
+         <div class="range">
+          <div class="range-slider">
+            <label for="range"> I [A]</label><br />
+            <form id="set_ipwm" action="" method="POST">
+             <input type="range"  id="range_ipwm" name="range_ipwm" onchange="changeIpwm()" min="5" max="16" value="%IMAX%"  step="1"/>
+            </form>
+            <div class="sliderticks">
+              <span  style="color:blue" >OFF</span>  
+              <span>6</span>
+              <span>7</span>
+              <span>8</span>
+              <span>9</span>
+              <span>10</span>   
+              <span>11</span>
+              <span>12</span>
+              <span>13</span>
+              <span>14</span>
+              <span>15</span>
+              <span>16</span>
+            </div>
+          </div>
+        
+          <div id="val_ipwm" class="value">%IMAX%</div>
+         </div>
+         </p>
+         <input class="buttonred" type="submit"  value="SET" onclick="submitIpwm()" />
+         <div id="ilimit_info" style="color: rgb(255, 255, 100); font-weight: bold; visibility: hidden;">LIMIT= %ILIMIT%</div>
+     </div>
+     
+      <div class="outer_frame">
+        <h2>Set Power [kW]</h2>
+         <div class="range">
+          <div class="range-slider">
+            <label for="range"> P [kW]</label><br />
+            <form id="set_pmax" action="" method="POST">
+             <input type="range"  id="range_pmax" name="range_pmax" onchange="changePmax()" min="1.0" max="11.0" value="%PMAX%"  step="0.1"/>
+            </form>
+            <div class="sliderticks">
+              <span  style="color:blue" >OFF</span>  
+              <span>2</span>
+              <span>3</span>
+              <span>4</span>
+              <span>5</span>   
+              <span>6</span>
+              <span>7</span>
+              <span>8</span>
+              <span>9</span>
+              <span>10</span>
+              <span>11</span>
+            </div>
+          </div>
+        
+          <div id="val_pmax" class="value">%PMAX%</div>
+         </div>
+         </p>
+         <input class="buttonred" type="submit"  value="SET" onclick="submitPmax()" />
+     </div>
+
+     <div class="outer_frame">
+         <button type="button" class="image-btn" onclick="window.location.href='index.html'"><img src="home.png">HOME</button>
+     </div>
+     <script type="text/javascript">
+
+           //* for runtime
+           var iLimit = %ILIMIT%;
+           var uGrid  = %UGRID%;
+           var nPhase = %NPHASE%;
+           //*/
+
+           /* for debugging
+           var iLimit = 16;
+           var uGrid = 230;
+           var nPhase= 2;
+           
+           //*/
+           var pLimit = uGrid * nPhase * iLimit;
+
+           function calcIpwm(pmax)
+           {
+              let ipwm = Math.round(pmax*1000 / (uGrid*nPhase));
+              if (ipwm < 6)
+               {ipwm = 0;}
+              if (ipwm > iLimit)
+               {ipwm = iLimit;}
+              document.getElementById("val_ipwm").innerHTML = ipwm;
+              document.getElementById("range_ipwm").value = ipwm;
+           }
+
+           function calcPmax(ipwm)
+           {
+              let pmax = Math.round((ipwm * uGrid * nPhase)/100) / 10;
+             
+              if (pmax > (pLimit))
+              { pmax = (pLimit);}
+              document.getElementById("val_pmax").innerHTML = pmax;
+              document.getElementById("range_pmax").value = pmax;
+           }
+
+
+          const delay = millis => new Promise((resolve, reject) => 
+           {
+              setTimeout(_ => resolve(), millis)
+           });
+
+           const gotohome = async function() 
+           {
+             await delay(1200);
+             window.location.href = 'index.html';
+           }
+          
+          function changeIpwm() 
+          {
+           let x = document.getElementById("range_ipwm").value;
+           if (x < 6) // trick for "0" value
+            {  x = 0;}
+           if (x > iLimit)
+           { x = iLimit;
+             document.getElementById("range_ipwm").value = x;
+           }
+
+           document.getElementById("val_ipwm").innerHTML = x;
+           calcPmax(x);
+          }
+        
+          function changePmax() 
+          {
+           let x = document.getElementById("range_pmax").value;
+            if (x < (uGrid*6*nPhase/1000))
+           {x = 0;}
+           if (x > (pLimit/1000))   
+           { x = pLimit/1000; 
+            document.getElementById("range_pmax").value = x;
+           }
+
+           document.getElementById("val_pmax").innerHTML = x;
+           calcIpwm(x);
+          }
+
+          function submitIpwm()
+          {
+           let x = document.getElementById("val_ipwm").innerHTML;
+           var xhr = new XMLHttpRequest();
+           xhr.open("GET", "/fetch?imax="+x, true);
+           xhr.send();
+           gotohome();
+          }   
+          
+          function submitPmax() 
+          {
+           let x = document.getElementById("val_pmax").innerHTML;
+           let val = parseFloat(x) * 1000;
+           var xhr = new XMLHttpRequest();
+           xhr.open("GET", "/fetch?pmax="+val, true);
+           xhr.send();
+           gotohome();  
+          }
+
+
+          window.onload = function(e)
+          { 
+           if (iLimit < 16)
+           {
+            document.getElementById("ilimit_info").style.visibility = "visible"; 
+            document.getElementById("ilimit_info").innerHTML = "Limit=" + iLimit + "A";
+           }
+          }
+          
+     </script>
+    </body>
+
+</html>

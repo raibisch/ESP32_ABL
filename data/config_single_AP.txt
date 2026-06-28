@@ -1,0 +1,37 @@
+varDEVICE_s_Name=ABL_Wallbox;
+varWIFI_s_Mode=AP; // AP=AccessPoint STA=Station
+varWIFI_s_Password=;
+varWIFI_s_SSID=MYSSID;
+
+varABL_i_A_soll_low = 6;
+varABL_i_A_soll_high = 10;
+varABL_i_Scantime_ms = 10000;
+
+varABL_i_U_netz = 231;
+
+; new in V2.0
+varABL_i_Phase_count   = 2;
+varABL_i_I_limit       = 12;
+
+;for ABL-Box without current sensor
+;measured for ID.3 pure 
+;WB01 2-phase 
+varABL_i_Watt_16A= 7210; 
+varABL_i_Watt_15A= 6900;
+varABL_i_Watt_14A= 6440;
+varABL_i_Watt_13A= 5980;
+varABL_i_Watt_12A= 5430;
+varABL_i_Watt_11A= 5060;
+varABL_i_Watt_10A= 4600;
+varABL_i_Watt_09A= 4100;
+varABL_i_Watt_08A= 3450;
+varABL_i_Watt_07A= 3220;
+varABL_i_Watt_06A= 2650;
+
+;WB01 1-phase 
+;varABL_i_Watt_16A= 3680;
+;varABL_i_Watt_12A= 2760;
+;varABL_i_Watt_10A= 2300;
+;varABL_i_Watt_08A= 1850;
+;varABL_i_Watt_07A= 1610;
+;varABL_i_Watt_06A= 1380;
