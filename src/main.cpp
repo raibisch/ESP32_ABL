@@ -4,7 +4,13 @@
 #include "SPIFFS.h"
 #include <WiFi.h>
 #include "WiFiGeneric.h"
+
+
+
 #include "math.h"
+// use math round() not arduino macro !!
+#undef round
+
 #include <ESPping.h>
 //#include <AsyncTCP.h>
 
@@ -15,8 +21,6 @@
 #ifdef MQTT_ENABLE
 #include <MQTT.h>
 #endif
-
-#undef round
 
 // set in platformio.ini !
 //#define DEBUG_PRINT 1       
@@ -111,6 +115,22 @@ DISABLE:
 
 */
 
+
+// BEDINGTE COMPILIERUNG: CORE-KONFIGURATION
+#if defined(CONFIG_IDF_TARGET_ESP32S3) || defined (CONFIG_IDF_TARGE_ESP32)
+    // Konfiguration für ESP32-S3 (Dual-Core)
+    #define BOARD_NAME "ESP32-S3"
+    #define USE_DUAL_CORE 1
+
+#elif defined(CONFIG_IDF_TARGET_ESP32S2)
+    // Konfiguration für ESP32-S2 (Single-Core)
+    #define BOARD_NAME "ESP32-S2"
+    #define USE_DUAL_CORE 0
+#else
+    #error "Dieses Board wird ird von diesem Code nicht unterstützt!"
+#endif
+
+
 HardwareSerial Serial_ABL(1);
 
 ESP32Time rtc[] = {0,0};
@@ -119,6 +139,8 @@ ESP32Time rtc[] = {0,0};
 //ESP32Time rtc2(0); 
 
 AsyncWebServer server(80);
+QueueHandle_t msgQueue; 
+
 #ifdef MQTT_ENABLE
 WiFiClient client;
 #endif
@@ -282,20 +304,21 @@ ABL_POLL_STATUS ABL_tx_status[WB_MAX] = {ABL_POLL_STATUS::POLL_Current, ABL_POLL
 String ABL_sChargeTime[WB_MAX] = {"00:00:00","00:00:00"};
 
 // now wait for polling
-static bool ABL_forcePollFlag[WB_MAX] = {false,false};
+bool ABL_forcePollFlag[WB_MAX] = {false,false};
 
 // Values to ABL
-static uint16_t ABL_tx_Icmax[WB_MAX]   = {0,0};
-static String ABL_rx_String = "";          // a String to hold incoming data
-static uint16_t ABL_rx_timeoutcount[WB_MAX] = {0,0};  
+uint16_t ABL_tx_Icmax[WB_MAX]   = {0,0};
+String ABL_rx_String = "";          // a String to hold incoming data
+uint16_t ABL_rx_timeoutcount[WB_MAX] = {0,0};  
 
-static int32_t SYS_ChargeCount[WB_MAX] = {0,0};
-static int32_t SYS_RestartCount = 0;
-static uint16_t SYS_TimeoutCount = 0;
-static String SYS_Version = "V2.2.0";
-static String SYS_CompileDate =  __DATE__;
-static String SYS_CompileTime = __TIME__;
-static String SYS_IP = "0.0.0.0";
+int32_t SYS_ChargeCount[WB_MAX] = {0,0};
+int32_t SYS_RestartCount = 0;
+uint16_t SYS_TimeoutCount = 0;
+String SYS_Version = "V2.2.0";
+
+String SYS_CompileDate = __DATE__;
+String SYS_CompileTime = __TIME__;
+String SYS_IP = "0.0.0.0";
 
 
 #ifdef MQTT_ENABLE
@@ -306,6 +329,52 @@ static String SYS_IP = "0.0.0.0";
 const char MQTT_CLIENTID[] = "ABL";
 #endif
      
+
+// Struktur für die 100-Byte-Nachricht (Kein dynamic memory leak)
+struct SerialMessage {
+    char data[105]; 
+};
+
+
+/// @brief Separater FreeRTOS Task für das Einlesen von Serial_ABL
+/// @param pvParameters 
+void serial_ABL_ReaderTask(void * pvParameters) {
+    SerialMessage incomingMsg;
+    int index = 0;
+
+    for(;;) {
+        while (Serial_ABL.available() > 0) 
+        {
+            char c = Serial_ABL.read();
+            if (c == '\n' || c == '\r') 
+            {
+                if (index > 0) {
+                    incomingMsg.data[index] = '\0'; // Nullterminator setzen
+                   
+                    // todo by JG: entweder die Daten hier direkt auswerten
+                    //   oder
+                    // Nachricht in die Queue schieben... und in der Loop auslesn
+                    xQueueSend(msgQueue, &incomingMsg, pdMS_TO_TICKS(10));     
+                    index = 0; 
+                }
+            } 
+            else if (index < 100) 
+            {
+                delay(1);
+                incomingMsg.data[index] = c;
+                index++;
+            }
+        }
+        
+        // WICHTIG: 5ms Pause für den WiFi-Stack (Besonders kritisch beim Single-Core S2!)
+        // original vTaskDelay(pdMS_TO_TICKS(5));
+        vTaskDelay(pdMS_TO_TICKS(10));
+    }
+}
+
+
+
+
 
 static long int HexString2int(String s)
 {
@@ -733,11 +802,6 @@ bool saveHistory()
 // ----  END EPROM Simulation -----------------------------------------
 
 
-void get_kWhvar(uint8_t wb_ix)
-{
-
-}
-
 //////////////////////////////////////////////////////////
 static double Wh = 0;
 /// @brief calculate aktual an total (sum) of W/h
@@ -931,7 +995,7 @@ void calculate_kWh(uint_fast16_t wb_ix)
       }
       
       ABL_sChargeTime[wb_ix] = rtc[wb_ix].getTime();
-      Wh = (ABL_rx_kW[wb_ix] * (rtc[wb_ix].getEpoch()*1000)) / (double)3600.0;
+      Wh = (ABL_rx_kW[wb_ix] * (rtc[wb_ix].getEpoch()*1000)) / 3600.0;
       
       ABL_rx_Wh[wb_ix] = round(Wh);  
       debug_printf("W/h:%d\r\n", ABL_rx_Wh);
@@ -975,6 +1039,8 @@ void setIcmax(uint_fast16_t wb_ix, uint16_t icmax)
   if (icmax == 0) 
   {
     ABL_tx_Icmax[wb_ix] = 0;
+    AsyncWebLog.printf("[PAUSE] WB%d\r\n",wb_ix+1);
+          debug_printf("[PAUSE] WB%d\r\n",wb_ix+1);
   }
   else
   // varABL_i_LoadBal_mode==0   -->  Load Balance WB01 WB02 50%
@@ -1008,13 +1074,14 @@ void setIcmax(uint_fast16_t wb_ix, uint16_t icmax)
         ABL_tx_status[i] = SET_Current;
       }
       
-      debug_printf("[LoadBal 0] L I M I T ! WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]);
       AsyncWebLog.printf("[LoadBal:0] L I M I T ! WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]);
+            debug_printf("[LoadBal 0] L I M I T ! WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]);
     }
     else
     {
-      debug_printf("[LoadBal Mode:0] NO LIMIT WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]); 
-      AsyncWebLog.printf("[LoadBal Mode:0] no limit WB0%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]); 
+     
+      AsyncWebLog.printf("[LoadBal Mode:0] NO limit WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]); 
+            debug_printf("[LoadBal Mode:0] NO LIMIT WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]); 
     }
   }
    // varABL_i_LoadBal_mode == 1  -> WB01=ON WB02=PAUSE
@@ -1049,6 +1116,7 @@ void setIcmax(uint_fast16_t wb_ix, uint16_t icmax)
 /// @brief Read actual Icmax
 /// @param wb_ix 
 /// @return 
+/* ?????????????? not used ?????????????????
 uint16_t getIcmax(uint_fast16_t wb_ix)
 {
   if ((ABL_tx_Icmax[0] + ABL_tx_Icmax[1]) > varStore.varABL_i_I_limit)
@@ -1062,6 +1130,7 @@ uint16_t getIcmax(uint_fast16_t wb_ix)
   
   return ABL_tx_Icmax[wb_ix];
 }
+*/
 
 /// @brief 
 /// @param wb_ix 
@@ -1074,7 +1143,7 @@ void setPmax(uint_fast16_t wb_ix, uint16_t iwatt)
    {
      nPhase = varStore.varABL2_i_Phase_count;
    }
-   uint16_t iAmpere = round(iwatt / (nPhase * varStore.varABL_i_U_netz));
+   uint16_t iAmpere = round(float(iwatt) / float(nPhase * varStore.varABL_i_U_netz));
    if (iAmpere > ILimit)
    {
      iAmpere= ILimit;
@@ -1091,20 +1160,38 @@ void setPmax(uint_fast16_t wb_ix, uint16_t iwatt)
 /// @brief Init ABL communication over RS485
 void inline ABL_init()
 {
-    debug_printf("ABL_init: parameters: ABL_RXD_GPIO=%d, ABL_TXT_GPIO=%d, ABL_RX_LOW_ENABLE_GPIO=%d\r\n", ABL_RXD_GPIO, ABL_TXT_GPIO, ABL_RX_LOW_ENABLE_GPIO);
+    Serial.printf("ABL_init: parameters: ABL_RXD_GPIO=%d, ABL_TXT_GPIO=%d, ABL_RX_LOW_ENABLE_GPIO=%d\r\n", ABL_RXD_GPIO, ABL_TXT_GPIO, ABL_RX_LOW_ENABLE_GPIO);
     debug_println("ABL_init: start to initialize...");
     Serial_ABL.begin(38400, SERIAL_8E1, ABL_RXD_GPIO, ABL_TXT_GPIO);
+    
     ABL_rx_String="";
     //ABL_rx_String.reserve(200);
     pinMode(ABL_RX_LOW_ENABLE_GPIO, OUTPUT_OPEN_DRAIN);
     digitalWrite(ABL_RX_LOW_ENABLE_GPIO, 0);
-    delay(1);
+    delay(100);
     //Serial_ABL.flush();
     debug_println("ABL_init: check serial connection...");
     while(Serial_ABL.available())
     {
         Serial_ABL.read();
     }
+    
+     // Queue für maximal 10 Nachrichten erstellen
+    msgQueue = xQueueCreate(10, sizeof(SerialMessage));
+    // BEDINGTE COMPILIERUNG: Task-Erstellung je nach Core-Anzahl
+    #if (USE_DUAL_CORE == 1)
+        // ESP-S3 Task fest auf Core 0 (isoliert vom Webserver)
+        xTaskCreatePinnedToCore(
+            serial_ABL_ReaderTask, "SerialABLTask", 3072, NULL, 1, NULL, 0
+        );
+        Serial.println("Task auf Core 0 gestartet (Dual-Core Modus).");
+    #else
+        // ESP32-S2 FreeRTOS Time-Slicing auf dem einen Core regeln
+        xTaskCreate(
+            serial_ABL_ReaderTask, "SerialABLTask", 3072, NULL, 1, NULL
+        );
+        Serial.println("Task im Multitasking-Modus gestartet (Single-Core Modus).");
+    #endif
     forcePolling();
     ABL_PollTime_old  = 0;
     ABL_StatusSec_old = 0;
@@ -1202,6 +1289,7 @@ void ABL_Send(uint8_t wb_ix,  ABL_POLL_STATUS s)
  digitalWrite(ABL_RX_LOW_ENABLE_GPIO,1);
  for (int i =0; i< tx.length(); i++)
  {
+  delay(1);
   Serial_ABL.write(tx[i]);
  }
  Serial_ABL.write("\r\n");
@@ -1210,16 +1298,17 @@ void ABL_Send(uint8_t wb_ix,  ABL_POLL_STATUS s)
  delay(1000);
  // empty the first rx input because of possible trash after first ABL-wakeup call
 
- while (Serial_ABL.available() > 0) 
- {
-    // cppcheck-suppress unreadVariable
-    char inChar = (char)Serial_ABL.read();
- }
+ //while (Serial_ABL.available() > 0) 
+ //{
+ //   // cppcheck-suppress unreadVariable
+ //   char inChar = (char)Serial_ABL.read();
+ //}
  
  // send 2x for wakeup from sleep
  digitalWrite(ABL_RX_LOW_ENABLE_GPIO,1); // Switch form Rx to TX
  for (int i =0; i< tx.length(); i++)
  {
+  delay(1);
   Serial_ABL.write(tx[i]);
  }
  Serial_ABL.write("\r\n");
@@ -1260,7 +1349,7 @@ cnt:               0      1         2          3 4  5 6  7 8
   uint_fast16_t wb_ix = 0;
   //String sLog = "";
   //sLog.reserve(250);
-  AsyncWebLog.printf("RX%s", s.c_str());
+  AsyncWebLog.printf("RX%s\r\n", s.c_str());
   
   if (s.startsWith(">0",0))
   {
@@ -1343,13 +1432,14 @@ cnt:               0      1         2          3 4  5 6  7 8
  }
 
 
-
+// old !!
+/*
 void serialEventABL() 
 {
     static char inChar;
+    vTaskDelay(pdMS_TO_TICKS(5));
     while (Serial_ABL.available() > 0) 
     {
-     delay(20);
      inChar = (char)Serial_ABL.read();
      ABL_rx_String += inChar;
      debug_print(inChar);
@@ -1369,8 +1459,10 @@ void serialEventABL()
       //delay(100);
       //setLED(0); // LED off
     }
+    vTaskDelay(pdMS_TO_TICKS(5));
    } // while
 }
+*/
 
 #ifdef USE_ETH_INSTEAD_WIFI
 //////////////////////////////////////////
@@ -1403,7 +1495,7 @@ void handleEthernetConnection()
 /// @brief Init Wifi
 /////////////////////////////////////////
 
-void initWifi(bool bSetAP)
+void inline initWifi(bool bSetAP)
 {
   // Test mit AP !!!!!!!!!!!!!!!!!!!!!
   //varStore.varWIFI_s_Mode="AP";
@@ -1411,17 +1503,18 @@ void initWifi(bool bSetAP)
   // API Info: https://docs.espressif.com/projects/esp-idf/en/v4.4.6/esp32/api-reference/network/esp_wifi.html 
    if (bSetAP || (varStore.varWIFI_s_Mode == "AP"))
    {
-    debug_println("WIFI:AP-Mode");
+    Serial.print("WIFI:AP-Mode ");
     varStore.varWIFI_s_Mode = "AP";
 
     WiFi.softAP("ESP_ABL_AP",varStore.varWIFI_s_Password.c_str());   
-    debug_print("IP Address: ");
+    Serial.print("IP Address: ");
     SYS_IP = WiFi.softAPIP().toString();
-    debug_println(SYS_IP);
+    Serial.println(SYS_IP);
+    delay(1000); 
    }
    else
    {
-    debug_println("WIFI:STA-Mode\r\n");
+    Serial.print("WIFI:STA-Mode\r\n");
     WiFi.mode(WIFI_STA);
   
     if (varStore.varWIFI_s_SSID.length() < 2)
@@ -1461,9 +1554,9 @@ void initWifi(bool bSetAP)
       varStore.varWIFI_s_Mode = "AP";
       WiFi.mode(WIFI_AP);
       WiFi.softAP("ESP_ABL_AP", NULL, 6, 0, 4,false);
-      debug_print("IP Address: ");
+      Serial.print("IP Address: ");
       SYS_IP = WiFi.softAPIP().toString();
-      debug_println(SYS_IP);
+      Serial.println(SYS_IP);
       return;
     }
    }
@@ -2215,38 +2308,7 @@ void initSPIFFS()
   }
 }
 
-
-// ------------------((ABL_rx_status.startsWith("C")) && --------------------------
-void setup()
-{
-  delay(1000);
-  Serial.begin(115200);
-  delay(800);
-  Serial.println("*** ABL: Setup-Start ***");
-  initSPIFFS();
-#ifndef WITHOUT_LED
-  initLED();
-#endif
-  bInitFileOK = initFileVarStore();
-  initHistory();
-#ifdef USE_ETH_INSTEAD_WIFI
-  initEthernet();
-#else
-  initWifi(!bInitFileOK);
-#endif
-  delay(200);
-#ifdef MQTT_ENABLE
-  mqtt_setup();
-#endif  
-  initWebServer();
-  ABL_init();
- 
-  rtc[0].setTime(0);
-  rtc[1].setTime(0);
-  Serial.println("*** ABL Setup End ***");
-}
-
-
+/// @brief  only used in main-loop
 void set_tmp_poll_time_ms()
 {
   if (ABL_forcePollFlag[0])
@@ -2278,8 +2340,37 @@ void set_tmp_poll_time_ms()
 }
 
 
-static uint_fast16_t last_wb_poll_ix = 0;
-static int main_iBlink;
+// ------------------((ABL_rx_status.startsWith("C")) && --------------------------
+void setup()
+{
+  Serial.begin(115200);
+  delay(2000); // Zeit für USB-CDC Initialisierung beim Booten
+  Serial.println("*** ABL: Setup-Start ***");
+  initSPIFFS();
+#ifndef WITHOUT_LED
+  initLED();
+#endif
+  bInitFileOK = initFileVarStore();
+  initHistory();
+  #ifdef USE_ETH_INSTEAD_WIFI
+  initEthernet();
+#else
+  initWifi(!bInitFileOK);
+#endif
+#ifdef MQTT_ENABLE
+  mqtt_setup();
+#endif  
+  initWebServer();
+  rtc[0].setTime(0);
+  rtc[1].setTime(0);
+  ABL_init();
+  Serial.println("*** ABL: Setup End ***");
+}
+
+
+String lastReceivedData = "--";
+uint last_wb_poll_ix = 0;
+int main_iBlink;
 void loop()
 {
     set_tmp_poll_time_ms();
@@ -2296,8 +2387,6 @@ void loop()
       last_wb_poll_ix = 0;
   #endif
 
-      // jetzt in ABL_Send !
-      //ABL_forcePollFlag[last_wb_poll_ix] = false;
       ABL_PollTime_old  = millis();
       log_timer = tmp_poll_time_ms / 1000;
       ABL_Send(last_wb_poll_ix,ABL_tx_status[last_wb_poll_ix]);
@@ -2341,11 +2430,29 @@ void loop()
     }
     else
     {
-       serialEventABL();
+       delay(5);
+       // old:
+       //serialEventABL();
+      SerialMessage receivedMsg;
+      // Prüfen (non-blocking, 0ms), ob Daten in der Queue liegen
+      if (xQueueReceive(msgQueue, &receivedMsg, 0) == pdTRUE) 
+      {
+        lastReceivedData = String(receivedMsg.data);
+        xQueueReset(msgQueue);
+        if (ABL_ParseReceive(lastReceivedData));
+        {
+          if (lastReceivedData.startsWith("01",1))
+           {ABL_rx_timeoutcount[0] = 0;}
+          else if (lastReceivedData.startsWith("02",1))
+           {ABL_rx_timeoutcount[1] = 0;}
+        }
+        Serial.print("RX");
+        Serial.println(lastReceivedData);
+      }
     }
 #ifdef MQTT_ENABLE
     mqtt_loop();
 #endif  
-   delay(1);
+   delay(5);
   
 }

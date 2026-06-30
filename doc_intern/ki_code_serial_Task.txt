@@ -1,0 +1,128 @@
+
+
+////////// KI CODE:
+
+// So funktioniert die Magie im Hintergrund:Automatische Erkennung: 
+// Die Makros CONFIG_IDF_TARGET_ESP32S3 und CONFIG_IDF_TARGET_ESP32S2 
+// werden vom Arduino-ESP32-Core im Hintergrund bereitgestellt. Sie müssen nichts im Code manuell umstellen.
+
+
+#include <Arduino.h>
+#include <WiFi.h>
+#include <ESPAsyncWebServer.h>
+
+// ============================================================================
+// BEDINGTE COMPILIERUNG: PIN- UND CORE-KONFIGURATION
+// ============================================================================
+#if defined(CONFIG_IDF_TARGET_ESP32S3)
+    // Konfiguration für ESP32-S3 (Dual-Core)
+    #define BOARD_NAME "ESP32-S3"
+    #define RX2_PIN 16
+    #define TX2_PIN 17
+    #define USE_DUAL_CORE 1
+
+#elif defined(CONFIG_IDF_TARGET_ESP32S2)
+    // Konfiguration für ESP32-S2 (Single-Core)
+    #define BOARD_NAME "ESP32-S2"
+    #define RX2_PIN 18  // Angepasste Standard-Pins für S2 (Beispiel)
+    #define TX2_PIN 19
+    #define USE_DUAL_CORE 0
+
+#else
+    #error "Dieses Board wird von diesem Code nicht unterstützt!"
+#endif
+// ============================================================================
+
+AsyncWebServer server(80);
+QueueHandle_t msgQueue;
+
+// Struktur für die 100-Byte-Nachricht (Kein dynamic memory leak)
+struct SerialMessage {
+    char data[105]; 
+};
+
+// Separater FreeRTOS Task für das Einlesen von Serial2
+void serial2ReaderTask(void * pvParameters) {
+    SerialMessage incomingMsg;
+    int index = 0;
+
+    for(;;) {
+        while (Serial2.available() > 0) {
+            char c = Serial2.read();
+
+            if (c == '\n' || c == '\r') {
+                if (index > 0) {
+                    incomingMsg.data[index] = '\0'; // Nullterminator setzen
+                    
+                    // Nachricht in die Queue schieben
+                    xQueueSend(msgQueue, &incomingMsg, pdMS_TO_TICKS(10));
+                    index = 0; 
+                }
+            } 
+            else if (index < 100) {
+                incomingMsg.data[index] = c;
+                index++;
+            }
+        }
+        
+        // WICHTIG: 5ms Pause für den WiFi-Stack (Besonders kritisch beim Single-Core S2!)
+        vTaskDelay(pdMS_TO_TICKS(5));
+    }
+}
+
+void setup() {
+    Serial.begin(115200);
+    delay(1000); // Zeit für USB-CDC Initialisierung beim Booten
+    
+    Serial.printf("\n--- Starte System auf %s ---\n", BOARD_NAME);
+    
+    // Serial2 mit sicherem 2048 Byte Puffer starten
+    Serial2.begin(115200, SERIAL_8N1, RX2_PIN, TX2_PIN, false, 2048);
+
+    // Queue für maximal 10 Nachrichten erstellen
+    msgQueue = xQueueCreate(10, sizeof(SerialMessage));
+
+    // BEDINGTE COMPILIERUNG: Task-Erstellung je nach Core-Anzahl
+    #if (USE_DUAL_CORE == 1)
+        // Beim S3 pinnen wir den Task fest auf Core 0 (isoliert vom Webserver)
+        xTaskCreatePinnedToCore(
+            serial2ReaderTask, "Serial2Task", 3072, NULL, 1, NULL, 0
+        );
+        Serial.println("Task auf Core 0 gestartet (Dual-Core Modus).");
+    #else
+        // Beim S2 lassen wir FreeRTOS das Time-Slicing auf dem einen Core regeln
+        xTaskCreate(
+            serial2ReaderTask, "Serial2Task", 3072, NULL, 1, NULL
+        );
+        Serial.println("Task im Multitasking-Modus gestartet (Single-Core Modus).");
+    #endif
+
+    // Webserver Route
+    server.on("/data", HTTP_GET, [](AsyncWebServerRequest *request){
+        request->send(200, "text/plain", "Server laeuft stabil!");
+    });
+
+    server.begin();
+}
+
+String lastReceivedData = "Noch keine Daten";
+
+void loop() {
+    SerialMessage receivedMsg;
+
+    // Prüfen (non-blocking, 0ms), ob Daten in der Queue liegen
+    if (xQueueReceive(msgQueue, &receivedMsg, 0) == pdTRUE) {
+        lastReceivedData = String(receivedMsg.data);
+        
+        Serial.print("[");
+        Serial.print(BOARD_NAME);
+        Serial.print("] Empfangen: ");
+        Serial.println(lastReceivedData);
+    }
+
+    // Kleine Pause im Hauptloop, um CPU-Last zu minimieren
+    delay(10); 
+}
+
+
+
