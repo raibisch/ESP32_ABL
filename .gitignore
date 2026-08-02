@@ -6,4 +6,6 @@ screenshots_*
 sdkconfig.*
 *intern.*
 *.intern
+doc_intern
+
 
