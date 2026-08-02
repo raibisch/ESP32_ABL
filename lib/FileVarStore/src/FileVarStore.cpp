@@ -130,7 +130,7 @@ int32_t FileVarStore::GetVarInt(String sKey, int32_t defaultvalue=0)
   if (posStart < 0)
   {
      debug_print("key:'"+sKey+ "' not found set defaultvalue: ");
-     debug_println(val); 
+     debug_println(defaultvalue); 
     val = defaultvalue;
     return val;
   }

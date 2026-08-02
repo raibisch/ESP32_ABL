@@ -1,10 +1,12 @@
 # ABL-Wallbox Web-App
 
+(no need for Android or iPhone App, just open in Web-Browser)
+
 [![License](https://img.shields.io/badge/license-EUPL1.2-green)](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12)
 
 ![Android-App](/pict/ABL_webcont_charging.png)
 
-![Android-App](/pict/ABL_webcont_b2.png) ![Android-App](/pict/ABL_webcont_setIpwm.png) ![Android-App](/pict/ABL_webcont_eventlog.png) ![Android-App](/pict/ABL_webcont_update.png) 
+![Android-App](/pict/ABL_webcont_setIpwm.png) ![Android-App](/pict/ABL_webcont_eventlog.png) ![Android-App](/pict/ABL_webcont_update.png) ![Android-App](/pict/ABL_webcont_config.png)
 
 ## Supported Hardware
 
@@ -13,38 +15,73 @@
 - eMH1 22kW --> Power calculation with internal current values
 - eMH2 22kW (StandAlone Modus) --> Power calculation with internal current values
 
-## Functions in Web-Interface
+## Functions 
 
 - INDEX-Page: display wallbox-status and actual parameter (I-max, kw-charge, kW/h, charging-time)
-- SET-Current: "Quick-set" predefined Ipwm values to ABL-Box
+- "Quick-set" predefined Ipwm values to ABL-Box
+- Set Ipwm (per phase)
+- Set Pmax (Power sum for all phases) 
 - CONFIG-DATA: set and store parameter and WiFi-credentials and the the "Quick-Set" charge-current
 - EVENT-LOG: Serial debug logging
 - UPDATE: over-the-air (Wifi) Software update
 - HISTORY: Set and Store total kW/h sum in internal FLASH
 - INFO: Version, Build, Temp(ESP-intern), IP, Timeout, Charge-Cnt, RSSI
-
-
-Monitor and control your ABL-Wallbox with an WEB-Application and integrate it (optional) in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) for less than 10€.
+- WEB-API for Limit to german 'Par 14a Limitation' to 4.2kW (see Example at 'External setting for Pmax')
+- Monitor and control your ABL-Wallbox with an WEB-Application and integrate it (optional) in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) for less than 10€.
 
 ## 'Virtual' consumption for ABL-Boxes without phase current sensor
 
-For (new) ABL-Boxes without internal per phase current sensor, the current could "pre-measured" external and defined in the APP-configuration per Imax setting. So it is possible to have a "poor man's" power and consumption measurement. If you charge every time the same car, the typical power for a defined Ipwm is near to the real measurement with a current-sensor, but with current sensor there is also an error, because the voltage 'U' for power calulation (P=U*(I1+I2+I2) is not measured. 
+For (new) ABL-Boxes without internal per phase current sensor, the current could "pre-measured" external and defined in the APP-configuration per Imax setting. So it is possible to have a "poor man's" power and consumption measurement. If you charge every time the same car, the typical power for a defined Ipwm is near to the real measurement with a current-sensor, but with current sensor there is also an error, because the voltage 'U' for power calulation (P=U*(I1+I2+I2) is not measured.
 
 I get the power from my "offical" smartmeter and set them into the config-file.
 
 If the Box has a current-sensor it was automatic detected and the value is calculated based on the current sum of the 3-phases...For future versions it would be possible to expand the software to get the power or current over the WEB-API from an external meter.
 
-## Manual Charge-Current-Setting
 
-The user interface was designed very simply to enable manual switching between two charging currents (possible application: ABL-Wallbox-kWh Gesamt
-ABL-Wallbox-kWh Gesamtreduced charging current for operation with a PV system).
-The two values could be individual defined in the 'config-data' page (for external setting use the WEB-API)
+## Manual Charge Current- and Power-Setting
 
-## External Charge-Current-Setting and reading values (WEB-API) 
+![Android-App](/pict/ABL_webcont_setIpwm.png)
+
+
+
+### Configuration
+
+![Android-App](/pict/ABL_webcont_config.png)
+
+goto "Setup" --> "Config-Data"
+
+*REMARK*
+
+!! no quotation marks for Strings
+
+!! ';' at the End of each Variable definition
+
+Set-Values:
+
+```
+varDEVICE_s_Name=ABL-Wallbox;
+varWIFI_s_Mode=STA; // AP=conect to AccessPoint, STA=standalone Station (IP:192.168.4.1)
+varWIFI_s_Password=mypassword;
+varWIFI_s_SSID=myssid;
+
+varABL_i_A_soll_low = 6; // Quick Setting for Low-Current
+varABL_i_A_soll_high = 10; // Quick Setting for High-Curent
+varABL_i_Scantime_ms = 10000; // Scantime to ABL-Wallbox (Values > 60000 --> Software-Sleep of ABL-Wallbox)
+
+varABL_i_U_netz = 231;  // in V (used for Power-calculation)
+
+varABL_i_Phase_count   = 3; // 1..3 (depending on car onboard-charger or external wireing)
+varABL_i_I_limit       = 12; // Current Limit (per Phase!)
+```
+
+## WEB-API for External charge-Current and charge-Power Setting (WEB-API)
 
 With the WEB-API the state and consumption values of the Wallbox could be monitored and charge-current could be set from 6A up to 16A in external applications like homeautomation software.
 
-### Fetch aktual Values and State
+
+## Fetch aktual Values and State
+
+### fetch
 
 `http:<your-ip>/fetch`
 
@@ -58,9 +95,12 @@ decoded:
 
 This includes the "Status" as an Integer Value, too.
 
+### fetchkv
+
 `http:<your-ip>/fetchkv`
 
 Receive:
+
 ```
 Imax=16 A 
 ActPower=11 kW
@@ -71,11 +111,43 @@ SumWork=2926 W/h
 ChargeTime=00:15:02
 ```
 
-### Set value Imax
+### fetchjson
 
-`http:<your-ip>/fetch?imax=xx` (xx= 6,8,10,12,14,16)
+`http:<your-ip>/fetchjson`
 
-## Home-Assistent Integration
+Receive:
+
+```
+{
+  "ipwm": 16,
+  "kw": 11,
+  "status": "A1",
+  "wh": 0.92,
+  "whsum": 2926,
+  "ctime": "00:15:02"
+}
+```
+
+## Web-API for  settting Imax 
+
+Set Wallbox Imax Current (per Phase)
+
+`http:<your-ip>/fetch?imax=xx` (xx= 6, 7...16)
+
+## Web-API for setting Pmax
+
+Set ABL-Wallbox Pmax (!! Sum [Watt] for **all** Phase !! limited by 'varABL_i_I_limit' per phase)
+
+`http:<your-ip>/fetch?pmax=xx` (xx= 4000, ....16000)
+
+Example or setting to german Par14a limit of 4.2kW:
+
+Remark: Value depends on 'varABL_i_Phase_count' and is rounded to set Imax als Integer value (6...16)
+
+`http:<your-ip>/fetch?pmax=4200`  
+
+## Example for Home-Assistent Integration
+
 ...see above 'WEB-API' for other external integration (e.g. other homeautomation software)
 
 ![HOMEASSI](/pict/homeassi.png)
@@ -130,12 +202,13 @@ rest_command:
     method: GET
 ```
 
-## Domoticz Integration
+## Example for 'Domoticz' Integration
 
 ...see above 'WEB-API' for other external integration (e.g. other homeautomation software)
 ![Domoticz](/pict/domoticz.png)
 
 #### Domoticz Configuration
+
 ![Domoticzpoller](/pict/domoticz_poller.png)
 
 LUA polling script for Domoticz (ablpoller.lua)
@@ -179,21 +252,25 @@ domoticz_updateDevice(67,'',values[5]) -- W/h SUM
 
 ## Hardware
 
-This example is realised with an 'ESP32-S2 mini' board and an 'MAX485 TTL to RS485' Converter. 
-The Olimex ESP32-POE has integrated Ethernet, supports Power over Ethernet and has a 5V/GND output for powering the "MAX485 TTL to RS485" Converter.
-You need to build the ESP firmware by yourself with platformIO.
-Have a look at the platformio.ini and adjust as you need it. 
-Additionally, have a look a the GPIO PINs as specified here: https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/resources/ESP32-POE-GPIO.png
+My first adapter is realised with an 'ESP32-S2 mini' board and an 'MAX485 TTL to RS485' Converter.
+
+Additionally, have a look a the GPIO PINs as specified here: <https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/resources/ESP32-POE-GPIO.png>
 ...but any other ESP-Board could be used with small modifications in the code and platformio.ini.
 
-![Fritzing](/pict/esp32_abl_fritzing.png) ![prototype](/pict/platine_prototype.jpg) 
+![Fritzing](/pict/esp32_abl_fritzing.png) ![prototype](/pict/platine_prototype.jpg)
 (board is cut to fit in a DIN hat rail case)
 
 ### NEW in V2.0: Waveshare Esp32-S2 RS485 Modul
-Ready to use solution:
+Solderless “plug and play” alternative with integrated RS485 Converter. USB-C port for program upload and debug.
+This is a ready to use solution (no need for any onboard wiring or additional Signal-Converter)
+
 ![Waveshare](/pict/waveshare_esp32-s3_rs485.png)
 
+## other Hardware (not testet)
 
+The Olimex ESP32-POE has integrated Ethernet, supports Power over Ethernet and has a 5V/GND output for powering the "MAX485 TTL to RS485" Converter.
+You need to build the ESP firmware by yourself with platformIO.
+Have a look at the platformio.ini and adjust as you need it.
 
 ## Helpful Infos and links and investigations (most in german)
 
@@ -203,11 +280,11 @@ my shared investigations and notes:
 [my-doc](/doc/knowhow.txt)
 
 ...others sources
-https://github.com/ThKls/Wallbox-Test
+<https://github.com/ThKls/Wallbox-Test>
 
-https://www.goingelectric.de/forum/viewtopic.php?f=34&t=38749&start=60
+<https://www.goingelectric.de/forum/viewtopic.php?f=34&t=38749&start=60>
 
-https://www.goingelectric.de/forum/viewtopic.php?p=1550459#
+<https://www.goingelectric.de/forum/viewtopic.php?p=1550459#>
 
 ### ABL-Wallbus Modbus-Connector
 
@@ -215,12 +292,13 @@ https://www.goingelectric.de/forum/viewtopic.php?p=1550459#
 connect RS485 to Pin1 (=A) and Pin2 (=B) of left RJ45-Connector in Wallbox
 the termination Jumper may be optional (worked for me with and without)
 
-### Other Modbus-Connector Variants:
+### Other Modbus-Connector Variants
+
 ![modubus-rj12_belegung](/pict/ABL_Modbus_RJ12_belegung.jpg)
 ![modubus-jr12_buchse](/pict/ABL_Modbus_RJ12_buchse.jpg)
 
 ...more infos:
-https://github.com/evcc-io/evcc/discussions/2801
+<https://github.com/evcc-io/evcc/discussions/2801>
 
 ## Licence
 
@@ -230,15 +308,15 @@ https://github.com/evcc-io/evcc/discussions/2801
 
 ## Download and Installation
 
-* To download click the DOWNLOAD ZIP button, rename the uncompressed folder 'ESP32_ABL'
-...or clone it with git 
+- To download click the DOWNLOAD ZIP button, rename the uncompressed folder 'ESP32_ABL'
+...or clone it with git
 
 ### PlatformIO and Arduino-IDE
 
 Projekt was build and testet with PlatformIO.
 
-Take care to upload the 'data' folder to the SPIFFS filesystem 
-see: https://randomnerdtutorials.com/esp32-vs-code-platformio-spiffs/
+Take care to upload the 'data' folder to the SPIFFS filesystem
+see: <https://randomnerdtutorials.com/esp32-vs-code-platformio-spiffs/>
 
 With the following two command you can create and upload the SPIFFS image:
 
@@ -252,9 +330,10 @@ pio run --target uploadfs
 If you do not want to compile the program from source:
 
 for the ESP32-S2 mini board I supply the actual firmware-version
+
 - got to subfolder `firmware/lolin_s2_mini/V1_2`
 
-- put ESP32-S2 board to flash-mode: 
+- put ESP32-S2 board to flash-mode:
 - disconnect USB then press and hold "0"-button
 - reconnect USB hold "0"-button
 - then release "0"-button
@@ -265,7 +344,7 @@ for the ESP32-S2 mini board I supply the actual firmware-version
 
 - after flashing reset or disconnect USB
 - search WIFI connetions for "ABLWALLBOX"
-- connect (without password) 
+- connect (without password)
 - start your webbrowser at "192.168.4.1" (this is the startpage for the APP)
   to connect to your home-route navigate to "Setup" --> "Config-Data" and change:
 
@@ -276,9 +355,10 @@ varWIFI_s_SSID=myrouter;
 ```
 
 ## Version History
-V1.0 initial version, first test with real charging car (VW ID.3) 
 
-V1.1 ABL-Box without internal current-sensor: calculate power and consumption from premeasured config-values. 
+V1.0 initial version, first test with real charging car (VW ID.3)
+
+V1.1 ABL-Box without internal current-sensor: calculate power and consumption from premeasured config-values.
 
 V 1.2 index-page redesign, fixes for kW/h-calculation, fetch kW/h sum, Info-page, display chargetime, bugfixes.
 
@@ -288,19 +368,15 @@ V1.2.3 More granular Imax Setting in 1A Steps (from 6A, 7A...16A) for external I
 
 V2.0.0 initial version with support for 2 Wallboxes, "Waveshare ESP32-S3 RS485" Modul support.
 
-V2.1.0 load management (load sharing (max 8A) per Box, or priority for one Wallbox) for 2 Wallboxes
+V2.1.0 add internal and external Setting for Pmax  in Watt ('2100....16000') Sum for all Phases.
+
+V2.2.1 load management (load sharing (max 8A) per Box, or priority for one Wallbox) for 2 Wallboxes
 
 
-## Ideas:
-- MQTT-client 
-- get actual Power [kW] and Work [kW/h] from external meter
-- get actual current from current sensor and calulate Power and Work
-- store more history data (last charging data)
-- get history-time from ntp (could work only in 'STA' network mode)
+## other extentions (not tested)
 
+add Ethernet port to esp32:
 
-## other extentions:
-- add Ethernet port to esp32
-https://www.roboter-bausatz.de/p/wt32-eth01-esp32-modul-mit-ethernet-bluetooth-wifi
-https://mischianti.org/esp32-ethernet-w5500-with-plain-http-and-ssl-https/
+<https://www.roboter-bausatz.de/p/wt32-eth01-esp32-modul-mit-ethernet-bluetooth-wifi>
 
+<https://mischianti.org/esp32-ethernet-w5500-with-plain-http-and-ssl-https/>
