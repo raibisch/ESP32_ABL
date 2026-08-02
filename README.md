@@ -343,7 +343,7 @@ for the ESP32-S2 mini board I supply the actual firmware-version
 (needs 'esptool.py') --> ask google
 
 - after flashing reset or disconnect USB
-- search WIFI connetions for "ABLWALLBOX"
+- search WIFI connection for "ESP_ABL_AP"
 - connect (without password)
 - start your webbrowser at "192.168.4.1" (this is the startpage for the APP)
   to connect to your home-route navigate to "Setup" --> "Config-Data" and change:
