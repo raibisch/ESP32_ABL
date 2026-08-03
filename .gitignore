@@ -8,6 +8,8 @@ sdkconfig.*
 *.intern
 doc_intern
 *.odt
+upload
+
 
 
 
