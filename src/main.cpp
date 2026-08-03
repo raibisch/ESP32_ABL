@@ -287,6 +287,8 @@ unsigned long tmp_poll_time_ms  = 10000;
 unsigned long ABL_PollTime_old;
 unsigned long ABL_StatusSec_old;
 
+bool ABL_Par14aLimit_aktiv = false;
+
 // new: 20.4.2026 extented to 2 Wallboxes
 // define variable arrays to 2 !! independend from WB_COUNT setting !!
 #define WB_MAX 2
@@ -321,7 +323,7 @@ uint16_t ABL_rx_timeoutcount[WB_MAX] = {0,0};
 int32_t SYS_ChargeCount[WB_MAX] = {0,0};
 int32_t SYS_RestartCount = 0;
 uint16_t SYS_TimeoutCount = 0;
-String SYS_Version = "V2.2.1";
+String SYS_Version = "V2.3.0";
 
 String SYS_CompileDate = __DATE__;
 String SYS_CompileTime = __TIME__;
@@ -1034,6 +1036,15 @@ void calculate_kWh(uint_fast16_t wb_ix)
 void setIcmax(uint_fast16_t wb_ix, uint16_t icmax)
 {
   uint16_t imaxOther = 0;
+  // Test Par14a Limit
+  int inputLimit = digitalRead(PAR14LIMIT_GPIO);
+  uint16_t Imax14aLimit = round(4200.0 / (varStore.varABL2_i_Phase_count * varStore.varABL_i_U_netz));
+  if ((inputLimit == 0) && (icmax > Imax14aLimit))
+  {
+    ABL_tx_Icmax[wb_ix] = Imax14aLimit;
+    AsyncWebLog.printf("[14aLimit] ON! : Limit to 4.2kW\r\n");
+  }
+  else
   if (icmax > varStore.varABL_i_I_limit)
   {
     ABL_tx_Icmax[wb_ix] = varStore.varABL_i_I_limit;
@@ -1188,6 +1199,7 @@ void testLoadBal()
 /// @param iwatt  in Watt NOT kW !!
 void setPmax(uint_fast16_t wb_ix, uint16_t iwatt)
 {
+   
    uint nPhase = varStore.varABL_i_Phase_count;
    uint ILimit = varStore.varABL_i_I_limit;
    if (wb_ix == 1)
@@ -1204,7 +1216,31 @@ void setPmax(uint_fast16_t wb_ix, uint16_t iwatt)
    {
      AsyncWebLog.printf("[SetPmax]WB%d P:%dW I:%dA\r\n", wb_ix+1, iwatt, iAmpere);
    }
+   
    setIcmax(wb_ix, iAmpere);
+}
+
+
+
+/// @brief  Limit to 4.2kW for German regulation
+/// @param  wb_ix (0..1)
+void testPar14aLimit(uint_fast16_t wb_ix)
+{
+    // Liest den aktuellen Status des Pins ein
+  int inputLimit = digitalRead(PAR14LIMIT_GPIO);
+  if (inputLimit == 0)
+  {
+    if (ABL_Par14aLimit_aktiv == false)
+    {
+      ABL_Par14aLimit_aktiv = true;
+      setPmax(wb_ix, 4200);
+    }
+    AsyncWebLog.printf("[Par14aLimit] Input-Limit: %d\r\n", ABL_Par14aLimit_aktiv);
+ }
+ else
+ {
+   ABL_Par14aLimit_aktiv = false;
+ }
 }
 
 #define ABL_RX_BUFFER_SIZE 512
@@ -1821,8 +1857,23 @@ String setHtmlVar(const String& var)
   }
   else 
   if (var == "ILIMIT")
-  {
-    return String(varStore.varABL_i_I_limit);
+  { 
+    uint16_t iLimit = varStore.varABL_i_I_limit;
+    // german Par14a Limit 4.2kW
+    int readLimit = digitalRead(PAR14LIMIT_GPIO);
+    if (readLimit == 0)
+    {
+      if (varStore.varABL_i_Phase_count == 2)
+      {
+        iLimit = 9;
+      }
+      else
+      if (varStore.varABL_i_Phase_count == 3)
+      {
+         iLimit = 6;
+      }
+    }
+    return String(iLimit);
   }
   else 
   if (var == "UGRID")
@@ -2407,6 +2458,9 @@ void setup()
 #ifndef WITHOUT_LED
   initLED();
 #endif
+
+  pinMode(PAR14LIMIT_GPIO, INPUT_PULLUP); // new: 4.2kW limit (german Par.14a)
+
   bInitFileOK = initFileVarStore();
   initHistory();
   ABL_init();
@@ -2427,6 +2481,7 @@ void setup()
 
   delay(1000);
   Serial.println("*** ABL: Setup End ***");
+  testPar14aLimit(0);
 }
 
 
@@ -2450,6 +2505,8 @@ void loop()
   #else
       last_wb_poll_ix = 0;
   #endif
+
+      testPar14aLimit(last_wb_poll_ix);
 
       ABL_PollTime_old  = millis();
       log_timer = tmp_poll_time_ms / 1000;

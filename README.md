@@ -2,6 +2,9 @@
 
 (no need for Android or iPhone App, just open in Web-Browser)
 
+## NEW: german Par14a Limit per Digital-Input 
+
+
 [![License](https://img.shields.io/badge/license-EUPL1.2-green)](https://joinup.ec.europa.eu/collection/eupl/eupl-text-eupl-12)
 
 ![Android-App](/pict/ABL_webcont_charging.png)
@@ -36,6 +39,45 @@ For (new) ABL-Boxes without internal per phase current sensor, the current could
 I get the power from my "offical" smartmeter and set them into the config-file.
 
 If the Box has a current-sensor it was automatic detected and the value is calculated based on the current sum of the 3-phases...For future versions it would be possible to expand the software to get the power or current over the WEB-API from an external meter.
+
+
+## Hardware
+
+## NEW in V2.0: Waveshare ESP32-S2 RS485 Modul
+
+Solderless “plug and play” alternative with integrated RS485 Converter. USB-C port for program upload and debug.
+This is a ready to use solution (no need for any onboard wiring or additional Signal-Converter)
+
+## German Paragraph 14a EnWG Limit (4.2kW)
+
+works out of the box on Waveshare ESP32-S2 RS485 Modul
+
+> ### Howto for Waveshare ESP32-S3 RS485 
+>
+> connect extra IO-connector (small plug with 4 cable below USB-Port) 
+>
+> - Limit-ON:  GPIO_01=yellow -connect to-> GROUND=black)
+> - Limit-OFF: no connection
+
+...for all other hardware define 'PAR14LIMIT_GPIO' Pin in platformio.ini
+
+![Waveshare](/pict/waveshare_esp32-s3_rs485.png)
+
+## ESP32-S2 mini
+
+My first adapter is realised with an 'ESP32-S2 mini' board and an 'MAX485 TTL to RS485' Converter.
+
+Additionally, have a look a the GPIO PINs as specified here: <https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/resources/ESP32-POE-GPIO.png>
+...but any other ESP-Board could be used with small modifications in the code and platformio.ini.
+
+![Fritzing](/pict/esp32_abl_fritzing.png) ![prototype](/pict/platine_prototype.jpg)
+(board is cut to fit in a DIN hat rail case)
+
+## other Hardware (not testet)
+
+The Olimex ESP32-POE has integrated Ethernet, supports Power over Ethernet and has a 5V/GND output for powering the "MAX485 TTL to RS485" Converter.
+You need to build the ESP firmware by yourself with platformIO.
+Have a look at the platformio.ini and adjust as you need it.
 
 
 ## Manual Charge Current- and Power-Setting
@@ -250,28 +292,6 @@ domoticz_updateDevice(66,'',values[4]) -- kW/h
 domoticz_updateDevice(67,'',values[5]) -- W/h SUM
 ```
 
-## Hardware
-
-My first adapter is realised with an 'ESP32-S2 mini' board and an 'MAX485 TTL to RS485' Converter.
-
-Additionally, have a look a the GPIO PINs as specified here: <https://www.olimex.com/Products/IoT/ESP32/ESP32-POE/resources/ESP32-POE-GPIO.png>
-...but any other ESP-Board could be used with small modifications in the code and platformio.ini.
-
-![Fritzing](/pict/esp32_abl_fritzing.png) ![prototype](/pict/platine_prototype.jpg)
-(board is cut to fit in a DIN hat rail case)
-
-### NEW in V2.0: Waveshare Esp32-S2 RS485 Modul
-Solderless “plug and play” alternative with integrated RS485 Converter. USB-C port for program upload and debug.
-This is a ready to use solution (no need for any onboard wiring or additional Signal-Converter)
-
-![Waveshare](/pict/waveshare_esp32-s3_rs485.png)
-
-## other Hardware (not testet)
-
-The Olimex ESP32-POE has integrated Ethernet, supports Power over Ethernet and has a 5V/GND output for powering the "MAX485 TTL to RS485" Converter.
-You need to build the ESP firmware by yourself with platformIO.
-Have a look at the platformio.ini and adjust as you need it.
-
 ## Helpful Infos and links and investigations (most in german)
 
 ### Software
@@ -371,6 +391,8 @@ V2.0.0 initial version with support for 2 Wallboxes, "Waveshare ESP32-S3 RS485" 
 V2.1.0 add internal and external Setting for Pmax  in Watt ('2100....16000') Sum for all Phases.
 
 V2.2.1 load management (load sharing (max 8A) per Box, or priority for one Wallbox) for 2 Wallboxes
+
+V2.3.0 german Paragraph 14a Limit (4.2kW) on Waveshare ESP32-S3 (Limit-ON: GPIO1=yellow -connect to-> GROUND=black)
 
 
 ## other extentions (not tested)
