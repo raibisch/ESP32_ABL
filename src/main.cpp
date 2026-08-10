@@ -34,6 +34,8 @@
 //#define WB_MAX 2
 // ************************************
 
+#define SW_VERSION "2.3.1"
+
 #ifdef DEBUG_PRINT
 #pragma message("Info : DEBUG_PRINT=1")
 #define debug_begin(...) Serial.begin(__VA_ARGS__);
@@ -131,6 +133,7 @@ DISABLE:
 #endif
 
 
+
 HardwareSerial Serial_ABL(1);
 
 ESP32Time rtc[] = {0,0};
@@ -151,10 +154,10 @@ bool bInitFileOK = false;
 enum ABL_POLL_STATUS {
   POLL_Current,      // implemented and tested
   SET_Current,       // implemented and tested
-  SET_StopCharge,    // implemented and tested (ABL_TX_SET_DISABLE)
-  SET_RestartCharge, // implemented and tested (SET_CURRENT after SET_CURRENT x3E8)
-  SET_DISABLE_WB,    // todo... not implemented
-  SET_ENABLE_WB,     // todo... not implemented
+  //SET_StopCharge,    // implemented and tested (ABL_TX_SET_DISABLE)
+  //SET_RestartCharge, // implemented and tested (SET_CURRENT after SET_CURRENT x3E8)
+  //SET_DISABLE_WB,    // todo... not implemented
+  //SET_ENABLE_WB,     // todo... not implemented
   POLL_FIRMWARE      // todo... not implemented
 };
 
@@ -283,7 +286,11 @@ Next Polling in :26sec
 
 
 uint log_timer = 0;
+
+#define POLLTIME_FAST  1500;
+#define POLLTIME_ACTIV 3000
 unsigned long tmp_poll_time_ms  = 10000;
+
 unsigned long ABL_PollTime_old;
 unsigned long ABL_StatusSec_old;
 
@@ -323,10 +330,11 @@ uint16_t ABL_rx_timeoutcount[WB_MAX] = {0,0};
 int32_t SYS_ChargeCount[WB_MAX] = {0,0};
 int32_t SYS_RestartCount = 0;
 uint16_t SYS_TimeoutCount = 0;
-String SYS_Version = "V2.3.0";
 
+String SYS_Version     = SW_VERSION;
 String SYS_CompileDate = __DATE__;
 String SYS_CompileTime = __TIME__;
+
 String SYS_IP = "0.0.0.0";
 
 
@@ -1060,8 +1068,8 @@ void setIcmax(uint_fast16_t wb_ix, uint16_t icmax)
   {
     ABL_tx_Icmax[wb_ix] = 0;
     ABL_PauseFlag[wb_ix] = true;
-    AsyncWebLog.printf("[PAUSE] WB%d\r\n",wb_ix+1);
-          debug_printf("[PAUSE] WB%d\r\n",wb_ix+1);
+   AsyncWebLog.printf("[setPAUSE] WB%d\r\n",wb_ix+1);
+         debug_printf("[setPAUSE] WB%d\r\n",wb_ix+1);
   }
   else
 #if WB_COUNT == 1
@@ -1098,44 +1106,18 @@ void setIcmax(uint_fast16_t wb_ix, uint16_t icmax)
         ABL_tx_status[i] = SET_Current;
       }
       
-      AsyncWebLog.printf("[LoadBal:0] L I M I T ! WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]);
-            debug_printf("[LoadBal 0] L I M I T ! WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]);
+      AsyncWebLog.printf("[LoadBalMode0] LIMIT ! WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]);
+            debug_printf("[LoadBalMode0] LIMIT ! WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]);
     }
     else
     {
      
-      AsyncWebLog.printf("[LoadBal Mode:0] NO limit WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]); 
-            debug_printf("[LoadBal Mode:0] NO LIMIT WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]); 
+      AsyncWebLog.printf("[LoadBalMode0] NO limit WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]); 
+            debug_printf("[LoadBalMode0] NO LIMIT WB%d to Imax:%d\r\n",wb_ix+1, ABL_tx_Icmax[wb_ix]); 
     }
   }
-  // varABL_i_LoadBal_mode == 1  PRIORITY WB01 -> WB01=ON WB02=PAUSE
-  // ===============================================================
-  else if ((varStore.varABL_i_LoadBal_mode == 1) && (wb_ix == 0))
-  {
-     ABL_LoadBal_Icmax[1] = ABL_tx_Icmax[1]; // save old value of Icmax
-     //ABL_LoadBal_pause[1] = true;
-     //ABL_LoadBal_active[0] = true;
-
-     //ABL_tx_Icmax[1]  = 0;
-     //ABL_PauseFlag[1] = true;
-     //ABL_tx_status[1] = SET_Current;
-           debug_printf("[LoadBal:1] Prio WB1\r\n");
-     AsyncWebLog.printf("[LoadBal:1] Prio WB1\r\n");
-   }
-
-   // varABL_i_LoadBal_mode == 2  PRIORITY WB02-> WB02=ON WB01=PAUSE
-   // =================================================
-   else if ((varStore.varABL_i_LoadBal_mode == 2) && (wb_ix == 1))
-   {
-     ABL_LoadBal_Icmax[0] = ABL_tx_Icmax[0]; // save old value of Icmax
-     //ABL_LoadBal_pause[1] = true;
-     //ABL_tx_Icmax[0]  = 0;
-     //ABL_PauseFlag[0] = true;
-     //ABL_tx_status[0] = SET_Current;
-           debug_printf("[LoadBal:2] Prio WB2\r\n");
-     AsyncWebLog.printf("[LoadBal:2] Prio WB2\r\n");
-   }
 #endif
+   AsyncWebLog.printf("[setIcmax] WB%d  Icmax=%d\r\n", wb_ix+1, ABL_tx_Icmax[wb_ix]);
    ABL_forcePollFlag[wb_ix] = true;
    ABL_tx_status[wb_ix] = SET_Current;
 
@@ -1147,50 +1129,67 @@ void setIcmax(uint_fast16_t wb_ix, uint16_t icmax)
 
 void testLoadBal()
 {
+  
+   if (ABL_PauseFlag[0] == true)
+   {
+      AsyncWebLog.printf("[LoadBalMode1] WB01=PAUSE -->WB02 unlocked! \r\n");
+      if (ABL_LoadBal_pause[1] == true)
+      {
+        ABL_LoadBal_pause[1] = false;
+        setIcmax(1,ABL_LoadBal_Icmax[1]);
+      }
+      return;
+   } 
+
   // z.Z. nur for Prio WB01 realisiert !!
   if (varStore.varABL_i_LoadBal_mode == 1)
   {
+   // CHARGE ('C') -----------------------------------  
    if (ABL_rx_status[0].indexOf('C') >= 0)
    {
-    AsyncWebLog.printf("[LoadBal] WB01 status:[C2]-->WB02 locked! \r\n");
+    AsyncWebLog.printf("[LoadBalMode1] WB01=charge[C2]-->WB02 locked! \r\n");
     ABL_LoadBal_active[0] = true;
     ABL_LoadBal_pause[1]  = true;
-    ABL_PauseFlag[1]      = true;
+    if ((ABL_LoadBal_pause[1]== false) || (ABL_rx_status[1].indexOf('C') >= 0))
+    {
+      ABL_LoadBal_pause[1] = true;
+      ABL_LoadBal_Icmax[1] = ABL_tx_Icmax[1];
+      setIcmax(1,0);
+    }
    }
    else 
+   // OPEN ('A') ---------------------------------------
    if (ABL_rx_status[0].indexOf('A') >= 0)
    {
-     AsyncWebLog.printf("[LoadBal] WB01 status:[A1]-->WB02 open! \r\n");
-    ABL_LoadBal_active[0] = false;
-    ABL_LoadBal_pause[1]  = false;
+     AsyncWebLog.printf("[LoadBalMode1] WB01=open[A1]-->WB02 unlocked! \r\n");
+     ABL_LoadBal_active[0] = false;
+     ABL_LoadBal_pause[1]  = false;
    }
    else
+   // CONNECTED ('B') ----------------------------------
    if ((ABL_rx_status[0].indexOf('B') >= 0))
-   {
-       
-        AsyncWebLog.printf("[LoadBal] WB01 status:[B2]-->WB02Pause=%d\r\n",ABL_PauseFlag[1]);
+   { 
+     // war vorher aktiv (=Ladeende)
+     if (ABL_LoadBal_active[0] == true)
+     {
        ABL_LoadBal_active[0] = false;
-       if (ABL_LoadBal_pause[1] == true)
-       {
-        ABL_PauseFlag[1]      = false;
-       }
-      
-   }
+       ABL_LoadBal_pause[1]  = false;
+       setIcmax(1,ABL_LoadBal_Icmax[1]);
+     } 
+     else
+     if ((ABL_rx_status[1].indexOf('C') >= 0) || (ABL_PauseFlag[1] == false))
+     {
+         ABL_LoadBal_pause[1] = true;
+         ABL_LoadBal_Icmax[1] = ABL_tx_Icmax[1];
+         setIcmax(1,0);
+     }
 
-   // Auswertung
-   if ((ABL_LoadBal_active[0] == false) 
-      && (ABL_LoadBal_pause[1]== true))
-   {
-     AsyncWebLog.printf("[LoadBal] WB01 status:[A1]or[B2]-->WB02 restore Imax:%d\r\n",ABL_LoadBal_Icmax[1]);
-     ABL_LoadBal_pause[1]  = false;
-     ABL_PauseFlag[1]      = false;
-     ABL_tx_Icmax[1]       = ABL_LoadBal_Icmax[1];
-     ABL_tx_status[1]      = SET_Current;;
-     ABL_forcePollFlag[1]   = true;
+     AsyncWebLog.printf("[LoadBalMode1] WB01=connected[B2]-->WB02Pause=%d\r\n",ABL_LoadBal_pause[1]);    
    }
    
    
-  }
+    
+  } // End LoadBal_mode == 1
 }
 
 
@@ -2419,20 +2418,7 @@ void initSPIFFS()
 /// @brief  only used in main-loop
 void inline set_tmp_poll_time_ms()
 {
-  if (ABL_forcePollFlag[0])
-    {
-      tmp_poll_time_ms = 2500;
-      return;
-    }
-#if WB_COUNT == 2
-    else
-    if (ABL_forcePollFlag[1])
-    {
-      tmp_poll_time_ms = 2500;
-      return;
-    }
-#endif
-   
+  
 #if WB_COUNT == 2
     if ((ABL_rx_status[0].indexOf('A') >= 0) && (ABL_rx_status[1].indexOf('A') >= 0))
 #else 
@@ -2442,8 +2428,21 @@ void inline set_tmp_poll_time_ms()
       tmp_poll_time_ms = varStore.varABL_i_Scantime_ms;} // value > 30sec reduces standby power 
     else
     {
-       tmp_poll_time_ms = 5000;
+       tmp_poll_time_ms = POLLTIME_ACTIV;
     }
+
+    if (ABL_forcePollFlag[0])
+    {
+      tmp_poll_time_ms = POLLTIME_FAST;
+    }
+#if WB_COUNT == 2
+    else
+    if (ABL_forcePollFlag[1])
+    {
+      tmp_poll_time_ms = POLLTIME_FAST;
+    }
+#endif
+   
      
 }
 
@@ -2511,9 +2510,6 @@ void loop()
       ABL_PollTime_old  = millis();
       log_timer = tmp_poll_time_ms / 1000;
       ABL_Send(last_wb_poll_ix,ABL_tx_status[last_wb_poll_ix]);
-#if WB_COUNT == 2
-//      testLoadBal(); // new in V2.2
-#endif
       testTimeount(last_wb_poll_ix); // Test Rx Timeout to ABL-Wallbox
       // Test Network connection
 #ifdef USE_ETH_INSTEAD_WIFI

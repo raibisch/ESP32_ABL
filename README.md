@@ -1,6 +1,24 @@
 # ABL-Wallbox Web-App
 
+ESP32 Projekt for controlling the ABL eMH1/eMH2 Wallbox with an easy to use Web-Application and simple REST-API to home automation software.
+
 (no need for Android or iPhone App, just open in Web-Browser)
+
+## Functions 
+
+- Display wallbox-status and actual parameter (I-max, kw-charge, kW/h, charging-time)
+- "Quick-set" predefined Ipwm values to ABL-Box
+- Set Ipwm (Current per phase)
+- Set Pmax (Power sum for all phases) 
+- CONFIG-DATA: set and store parameter and WiFi-credentials and the the "Quick-Set" charge-current
+- EVENT-LOG: Serial debug logging
+- UPDATE: over-the-air (Wifi) Software update
+- HISTORY: Set and Store total kW/h sum in internal FLASH
+- INFO: Version, Build, Temp(ESP-intern), IP, Timeout, Charge-Cnt, RSSI
+- WEB-API for Limit to german 'Par 14a Limitation' to 4.2kW (see Example at 'External setting for Pmax')
+- Monitor and control your ABL-Wallbox with an WEB-Application and integrate it (optional) in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) 
+- ... for less than 10€ (with ESP32-S2-mini) or 30€ (ready to use WAVESHARE-DIN-RAIL-Modul).
+
 
 ## NEW: german Par14a Limit per Digital-Input 
 
@@ -11,26 +29,12 @@
 
 ![Android-App](/pict/ABL_webcont_setIpwm.png) ![Android-App](/pict/ABL_webcont_eventlog.png) ![Android-App](/pict/ABL_webcont_update.png) ![Android-App](/pict/ABL_webcont_config.png)
 
-## Supported Hardware
+## Supported ABL Wallbox
 
 - eMH1 11kW ( old version) --> Power calculation with internal current values
 - eMH1 11kW ( > Q2-2021 no internal current sensor)  --> 'virtual' Power calculation
 - eMH1 22kW --> Power calculation with internal current values
 - eMH2 22kW (StandAlone Modus) --> Power calculation with internal current values
-
-## Functions 
-
-- INDEX-Page: display wallbox-status and actual parameter (I-max, kw-charge, kW/h, charging-time)
-- "Quick-set" predefined Ipwm values to ABL-Box
-- Set Ipwm (per phase)
-- Set Pmax (Power sum for all phases) 
-- CONFIG-DATA: set and store parameter and WiFi-credentials and the the "Quick-Set" charge-current
-- EVENT-LOG: Serial debug logging
-- UPDATE: over-the-air (Wifi) Software update
-- HISTORY: Set and Store total kW/h sum in internal FLASH
-- INFO: Version, Build, Temp(ESP-intern), IP, Timeout, Charge-Cnt, RSSI
-- WEB-API for Limit to german 'Par 14a Limitation' to 4.2kW (see Example at 'External setting for Pmax')
-- Monitor and control your ABL-Wallbox with an WEB-Application and integrate it (optional) in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) for less than 10€.
 
 ## 'Virtual' consumption for ABL-Boxes without phase current sensor
 
@@ -41,7 +45,7 @@ I get the power from my "offical" smartmeter and set them into the config-file.
 If the Box has a current-sensor it was automatic detected and the value is calculated based on the current sum of the 3-phases...For future versions it would be possible to expand the software to get the power or current over the WEB-API from an external meter.
 
 
-## Hardware
+## ESP32 Hardware
 
 ## NEW in V2.0: Waveshare ESP32-S2 RS485 Modul
 
@@ -125,7 +129,7 @@ With the WEB-API the state and consumption values of the Wallbox could be monito
 
 ### fetch
 
-`http:<your-ip>/fetch`
+`http://<your-ip>/fetch`
 
 Receive:
 `8.00,0.00,A1,0.00,103980,00:00:00`
@@ -139,7 +143,7 @@ This includes the "Status" as an Integer Value, too.
 
 ### fetchkv
 
-`http:<your-ip>/fetchkv`
+`http://<your-ip>/fetchkv`
 
 Receive:
 
@@ -155,7 +159,7 @@ ChargeTime=00:15:02
 
 ### fetchjson
 
-`http:<your-ip>/fetchjson`
+`http://<your-ip>/fetchjson`
 
 Receive:
 
@@ -174,19 +178,19 @@ Receive:
 
 Set Wallbox Imax Current (per Phase)
 
-`http:<your-ip>/fetch?imax=xx` (xx= 6, 7...16)
+`http:<your-ip>//fetch?imax=xx` (xx= 6, 7...16)
 
 ## Web-API for setting Pmax
 
 Set ABL-Wallbox Pmax (!! Sum [Watt] for **all** Phase !! limited by 'varABL_i_I_limit' per phase)
 
-`http:<your-ip>/fetch?pmax=xx` (xx= 4000, ....16000)
+`http:<your-ip>//fetch?pmax=xx` (xx= 4000, ....16000)
 
 Example or setting to german Par14a limit of 4.2kW:
 
 Remark: Value depends on 'varABL_i_Phase_count' and is rounded to set Imax als Integer value (6...16)
 
-`http:<your-ip>/fetch?pmax=4200`  
+`http:<your-ip>//fetch?pmax=4200`  
 
 ## Example for Home-Assistent Integration
 
@@ -394,11 +398,15 @@ V2.2.1 load management (load sharing (max 8A) per Box, or priority for one Wallb
 
 V2.3.0 german Paragraph 14a Limit (4.2kW) on Waveshare ESP32-S3 (Limit-ON: GPIO1=yellow -connect to-> GROUND=black)
 
+V2.3.1 bugfix for load management 2 Boxes
 
-## other extentions (not tested)
+
+## other ESP32 Hardware (not tested)
 
 add Ethernet port to esp32:
 
 <https://www.roboter-bausatz.de/p/wt32-eth01-esp32-modul-mit-ethernet-bluetooth-wifi>
 
 <https://mischianti.org/esp32-ethernet-w5500-with-plain-http-and-ssl-https/>
+
+<https://www.waveshare.com/rs485-to-eth-b.htm>
