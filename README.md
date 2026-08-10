@@ -6,6 +6,7 @@ ESP32 Projekt for controlling the ABL eMH1/eMH2 Wallbox with an easy to use Web-
 
 ## Functions 
 
+- Monitor and control your ABL-Wallbox with an WEB-Application and integrate it (optional) in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) 
 - Display wallbox-status and actual parameter (I-max, kw-charge, kW/h, charging-time)
 - "Quick-set" predefined Ipwm values to ABL-Box
 - Set Ipwm (Current per phase)
@@ -16,8 +17,7 @@ ESP32 Projekt for controlling the ABL eMH1/eMH2 Wallbox with an easy to use Web-
 - HISTORY: Set and Store total kW/h sum in internal FLASH
 - INFO: Version, Build, Temp(ESP-intern), IP, Timeout, Charge-Cnt, RSSI
 - WEB-API for Limit to german 'Par 14a Limitation' to 4.2kW (see Example at 'External setting for Pmax')
-- Monitor and control your ABL-Wallbox with an WEB-Application and integrate it (optional) in your homeautomation software with simple REST-Interface (see example for DOMOTICZ below) 
-- ... for less than 10€ (with ESP32-S2-mini) or 30€ (ready to use WAVESHARE-DIN-RAIL-Modul).
+- *... for less than 10€ (with ESP32-S2-mini) or 30€ (ready to use WAVESHARE-DIN-RAIL-Modul).*
 
 
 ## NEW: german Par14a Limit per Digital-Input 
